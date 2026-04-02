@@ -1,0 +1,356 @@
+{
+  "$defs": {
+    "ControlApiConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "prefix": {
+          "default": "/_sim",
+          "pattern": "^/.*",
+          "title": "Prefix",
+          "type": "string"
+        },
+        "read_only_token": {
+          "minLength": 1,
+          "title": "Read Only Token",
+          "type": "string"
+        },
+        "write_token": {
+          "minLength": 1,
+          "title": "Write Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "read_only_token",
+        "write_token"
+      ],
+      "title": "ControlApiConfig",
+      "type": "object"
+    },
+    "LoggingChannels": {
+      "additionalProperties": false,
+      "properties": {
+        "system": {
+          "default": "system.log",
+          "title": "System",
+          "type": "string"
+        },
+        "merchant_outbound": {
+          "default": "merchant_outbound.log",
+          "title": "Merchant Outbound",
+          "type": "string"
+        },
+        "merchant_callbacks": {
+          "default": "merchant_callbacks.log",
+          "title": "Merchant Callbacks",
+          "type": "string"
+        },
+        "trader_inbound": {
+          "default": "trader_inbound.log",
+          "title": "Trader Inbound",
+          "type": "string"
+        },
+        "trader_outbound": {
+          "default": "trader_outbound.log",
+          "title": "Trader Outbound",
+          "type": "string"
+        }
+      },
+      "title": "LoggingChannels",
+      "type": "object"
+    },
+    "LoggingConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "default": "INFO",
+          "enum": [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR",
+            "CRITICAL"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "format": {
+          "const": "jsonl",
+          "default": "jsonl",
+          "title": "Format",
+          "type": "string"
+        },
+        "rotation": {
+          "$ref": "#/$defs/RotationConfig"
+        },
+        "channels": {
+          "$ref": "#/$defs/LoggingChannels"
+        },
+        "payload_limits": {
+          "$ref": "#/$defs/PayloadLimits"
+        }
+      },
+      "title": "LoggingConfig",
+      "type": "object"
+    },
+    "PathsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "merchant_config": {
+          "minLength": 1,
+          "title": "Merchant Config",
+          "type": "string"
+        },
+        "trader_config": {
+          "minLength": 1,
+          "title": "Trader Config",
+          "type": "string"
+        },
+        "fixtures_dir": {
+          "default": "./fixtures",
+          "minLength": 1,
+          "title": "Fixtures Dir",
+          "type": "string"
+        },
+        "log_dir": {
+          "default": "./logs",
+          "minLength": 1,
+          "title": "Log Dir",
+          "type": "string"
+        }
+      },
+      "required": [
+        "merchant_config",
+        "trader_config"
+      ],
+      "title": "PathsConfig",
+      "type": "object"
+    },
+    "PayloadLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_body_chars": {
+          "default": 10000,
+          "exclusiveMinimum": 0,
+          "title": "Max Body Chars",
+          "type": "integer"
+        },
+        "mask_headers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mask Headers",
+          "type": "array"
+        }
+      },
+      "title": "PayloadLimits",
+      "type": "object"
+    },
+    "PlatformConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "base_url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Base Url",
+          "type": "string"
+        },
+        "verify_ssl": {
+          "default": false,
+          "title": "Verify Ssl",
+          "type": "boolean"
+        },
+        "timeout_ms": {
+          "default": 10000,
+          "exclusiveMinimum": 0,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "api_prefix": {
+          "default": "/api/h2h",
+          "pattern": "^/.*",
+          "title": "Api Prefix",
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_url"
+      ],
+      "title": "PlatformConfig",
+      "type": "object"
+    },
+    "RedisConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "url": {
+          "default": "redis://redis:6379/0",
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "title": "RedisConfig",
+      "type": "object"
+    },
+    "RotationConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "when": {
+          "default": "midnight",
+          "enum": [
+            "S",
+            "M",
+            "H",
+            "D",
+            "midnight",
+            "W0",
+            "W1",
+            "W2",
+            "W3",
+            "W4",
+            "W5",
+            "W6"
+          ],
+          "title": "When",
+          "type": "string"
+        },
+        "backup_count": {
+          "default": 14,
+          "minimum": 0,
+          "title": "Backup Count",
+          "type": "integer"
+        },
+        "max_bytes": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Max Bytes",
+          "type": "integer"
+        }
+      },
+      "title": "RotationConfig",
+      "type": "object"
+    },
+    "RuntimeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "state_backend": {
+          "default": "memory",
+          "enum": [
+            "memory",
+            "redis"
+          ],
+          "title": "State Backend",
+          "type": "string"
+        },
+        "idempotency_ttl_sec": {
+          "default": 86400,
+          "exclusiveMinimum": 0,
+          "title": "Idempotency Ttl Sec",
+          "type": "integer"
+        },
+        "order_state_ttl_sec": {
+          "default": 604800,
+          "exclusiveMinimum": 0,
+          "title": "Order State Ttl Sec",
+          "type": "integer"
+        },
+        "redis": {
+          "$ref": "#/$defs/RedisConfig"
+        }
+      },
+      "title": "RuntimeConfig",
+      "type": "object"
+    },
+    "ServiceConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "listen_host": {
+          "default": "0.0.0.0",
+          "title": "Listen Host",
+          "type": "string"
+        },
+        "listen_port": {
+          "default": 8099,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Listen Port",
+          "type": "integer"
+        },
+        "public_base_url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Public Base Url",
+          "type": "string"
+        },
+        "timezone": {
+          "default": "Europe/Warsaw",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "config_reload_interval_sec": {
+          "default": 5,
+          "minimum": 1,
+          "title": "Config Reload Interval Sec",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "public_base_url"
+      ],
+      "title": "ServiceConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "service": {
+      "$ref": "#/$defs/ServiceConfig"
+    },
+    "platform": {
+      "$ref": "#/$defs/PlatformConfig"
+    },
+    "paths": {
+      "$ref": "#/$defs/PathsConfig"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeConfig"
+    },
+    "logging": {
+      "$ref": "#/$defs/LoggingConfig"
+    },
+    "control_api": {
+      "$ref": "#/$defs/ControlApiConfig"
+    }
+  },
+  "required": [
+    "service",
+    "platform",
+    "paths",
+    "control_api"
+  ],
+  "title": "SystemConfig",
+  "type": "object"
+}

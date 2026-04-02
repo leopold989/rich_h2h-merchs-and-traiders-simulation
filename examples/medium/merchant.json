@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "request_timeout_ms": 10000,
+    "poll_after_create": {
+      "enabled": true,
+      "delay_ms": 2000,
+      "attempts": 3,
+      "interval_ms": 5000
+    },
+    "callback_response": {
+      "status_code": 200,
+      "body": {
+        "success": true,
+        "message": "accepted"
+      }
+    },
+    "external_id": {
+      "mode": "pattern",
+      "pattern": "{merchant_alias}-{template_id}-{date:%Y%m%d%H%M%S}-{seq}"
+    }
+  },
+  "request_templates": [
+    {
+      "id": "rub_sbp_smoke",
+      "active": true,
+      "description": "Обычный RUB/SBP сценарий с подтверждением клиентом и прикреплением чека",
+      "request": {
+        "amount": 5000,
+        "payment_gateway": "sbp_rub",
+        "payment_detail_type": "phone",
+        "is_transgran": false
+      },
+      "post_actions": [
+        {
+          "id": "confirm_15s",
+          "active": true,
+          "type": "confirm_client",
+          "after_ms": 15000,
+          "if_order_status_in": [
+            "pending"
+          ]
+        },
+        {
+          "id": "receipt_18s",
+          "active": true,
+          "type": "add_receipt",
+          "after_ms": 18000,
+          "if_order_status_in": [
+            "pending"
+          ],
+          "receipt": {
+            "kind": "file",
+            "path": "receipts/sbp_ok_001.png"
+          }
+        }
+      ]
+    },
+    {
+      "id": "rub_card_cancel",
+      "active": true,
+      "description": "RUB card сценарий с последующей отменой сделки",
+      "request": {
+        "amount": 25000,
+        "payment_gateway": "sberbank_rub",
+        "payment_detail_type": "card",
+        "is_transgran": false
+      },
+      "post_actions": [
+        {
+          "id": "cancel_40s",
+          "active": true,
+          "type": "cancel",
+          "after_ms": 40000,
+          "if_order_status_in": [
+            "pending"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kzt_card_dispute",
+      "active": true,
+      "description": "KZT сценарий с открытием спора и опциональным finish для dev",
+      "request": {
+        "amount": 150000,
+        "payment_gateway": "halyk_kzt",
+        "payment_detail_type": "card",
+        "is_transgran": true
+      },
+      "post_actions": [
+        {
+          "id": "dispute_90s",
+          "active": true,
+          "type": "dispute",
+          "after_ms": 90000,
+          "if_order_status_in": [
+            "pending"
+          ],
+          "receipt": {
+            "kind": "file",
+            "path": "receipts/dispute_halyk_001.pdf"
+          }
+        },
+        {
+          "id": "finish_150s",
+          "active": false,
+          "type": "finish",
+          "after_ms": 150000,
+          "if_order_status_in": [
+            "pending"
+          ]
+        }
+      ]
+    }
+  ],
+  "merchants": [
+    {
+      "alias": "merchant_alpha",
+      "active": true,
+      "merchant_id": "8bc8a8d0-77e2-4ff5-9ff6-b9b74fd51a11",
+      "access_token": "alpha-dev-token",
+      "target": {
+        "base_url": "https://platform-rich-dev.local",
+        "api_prefix": "/api/h2h",
+        "verify_ssl": false,
+        "timeout_ms": 10000
+      },
+      "callback": {
+        "enabled": true,
+        "path": "/callbacks/merchants/merchant_alpha",
+        "validate_access_token": true,
+        "response_status_code": 200,
+        "response_body": {
+          "success": true,
+          "message": "callback accepted"
+        }
+      },
+      "default_headers": {
+        "X-Sim-Merchant": "merchant_alpha"
+      }
+    },
+    {
+      "alias": "merchant_beta",
+      "active": true,
+      "merchant_id": "1c509b81-c1df-4533-a62f-a8ba7fc53e22",
+      "access_token": "beta-dev-token",
+      "target": {
+        "base_url": "https://platform-rich-dev.local",
+        "api_prefix": "/api/h2h",
+        "verify_ssl": false,
+        "timeout_ms": 10000
+      },
+      "callback": {
+        "enabled": true,
+        "path": "/callbacks/merchants/merchant_beta",
+        "validate_access_token": true,
+        "response_status_code": 200,
+        "response_body": {
+          "success": true
+        }
+      },
+      "default_headers": {
+        "X-Sim-Merchant": "merchant_beta"
+      }
+    }
+  ],
+  "merchant_jobs": [
+    {
+      "id": "alpha_sbp_every_20s",
+      "active": true,
+      "merchant_alias": "merchant_alpha",
+      "template_id": "rub_sbp_smoke",
+      "schedule": {
+        "start_delay_sec": 10,
+        "interval_sec": 20,
+        "requests_total": 30,
+        "jitter_sec": 2,
+        "max_inflight": 1
+      },
+      "external_id": {
+        "pattern": "alpha-sbp-{date:%Y%m%d}-{seq}"
+      }
+    },
+    {
+      "id": "alpha_card_burst",
+      "active": true,
+      "merchant_alias": "merchant_alpha",
+      "template_id": "rub_card_cancel",
+      "schedule": {
+        "start_delay_sec": 60,
+        "interval_sec": 5,
+        "requests_total": 20,
+        "jitter_sec": 1,
+        "max_inflight": 3
+      },
+      "external_id": {
+        "pattern": "alpha-card-{date:%Y%m%d}-{seq}"
+      }
+    },
+    {
+      "id": "beta_kzt_dispute_nightly",
+      "active": false,
+      "merchant_alias": "merchant_beta",
+      "template_id": "kzt_card_dispute",
+      "schedule": {
+        "start_delay_sec": 0,
+        "interval_sec": 120,
+        "requests_total": 10,
+        "jitter_sec": 5,
+        "max_inflight": 1
+      },
+      "external_id": {
+        "pattern": "beta-kzt-dispute-{date:%Y%m%d}-{seq}"
+      }
+    }
+  ]
+}

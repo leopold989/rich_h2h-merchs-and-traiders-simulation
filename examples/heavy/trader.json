@@ -1,0 +1,398 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "driver": "standard_h2h",
+    "api_prefix": "/api/h2h",
+    "validate_access_token": true,
+    "validate_merchant_id": true,
+    "selection_strategy": "first_match",
+    "idempotency": {
+      "key_fields": [
+        "merchant_id",
+        "external_id"
+      ],
+      "ttl_sec": 86400
+    },
+    "callback_client": {
+      "timeout_ms": 10000,
+      "verify_ssl": false,
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      }
+    }
+  },
+  "response_profiles": [
+    {
+      "id": "instant_success",
+      "active": true,
+      "create_order": {
+        "mode": "success",
+        "delay_ms": 300,
+        "status_code": 200,
+        "callback": {
+          "enabled": false
+        }
+      },
+      "cancel_order": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "confirm_client": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "add_receipt": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "open_dispute": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      }
+    },
+    {
+      "id": "delayed_success_callback",
+      "active": true,
+      "create_order": {
+        "mode": "success",
+        "delay_ms": 1200,
+        "status_code": 200,
+        "callback": {
+          "enabled": true,
+          "after_ms": 20000,
+          "payload": {
+            "success": true,
+            "data": {
+              "status": "success",
+              "sub_status": "accepted"
+            }
+          }
+        }
+      },
+      "cancel_order": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "confirm_client": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "add_receipt": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "open_dispute": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      }
+    },
+    {
+      "id": "no_requisites",
+      "active": true,
+      "create_order": {
+        "mode": "business_reject",
+        "delay_ms": 300,
+        "status_code": 200,
+        "body": {
+          "success": false,
+          "message": "No requisites available"
+        },
+        "callback": {
+          "enabled": false
+        }
+      },
+      "cancel_order": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "confirm_client": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "add_receipt": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "open_dispute": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      }
+    },
+    {
+      "id": "hard_timeout",
+      "active": true,
+      "create_order": {
+        "mode": "timeout",
+        "delay_ms": 15000,
+        "callback": {
+          "enabled": false
+        }
+      },
+      "cancel_order": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "confirm_client": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "add_receipt": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "open_dispute": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      }
+    },
+    {
+      "id": "http_500",
+      "active": true,
+      "create_order": {
+        "mode": "http_error",
+        "delay_ms": 200,
+        "status_code": 500,
+        "body": {
+          "success": false,
+          "message": "Internal simulator error"
+        },
+        "callback": {
+          "enabled": false
+        }
+      },
+      "cancel_order": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "confirm_client": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "add_receipt": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      },
+      "open_dispute": {
+        "mode": "success",
+        "delay_ms": 100,
+        "status_code": 200
+      }
+    }
+  ],
+  "traders": [
+    {
+      "alias": "trader_light",
+      "active": true,
+      "base_path": "/traders/trader_light",
+      "driver": "standard_h2h",
+      "auth": {
+        "access_token": "trader-light-token",
+        "merchant_id": "c0a0c1fd-37ad-4c9e-8a48-7b4c90c1f111",
+        "validate_access_token": true,
+        "validate_merchant_id": true
+      },
+      "selection_strategy": "first_match",
+      "default_response_profile_id": "instant_success",
+      "routing_rules": [
+        {
+          "id": "rule_light_sbp",
+          "active": true,
+          "match": {
+            "payment_gateway": "sbp_rub",
+            "payment_detail_type": "phone",
+            "amount": {
+              "gte": 1000,
+              "lte": 15000
+            },
+            "is_transgran": false
+          },
+          "requisite_pool": [
+            "req_light_phone_01"
+          ],
+          "response_profile_id": "instant_success"
+        }
+      ],
+      "requisites": [
+        {
+          "id": "req_light_phone_01",
+          "active": true,
+          "payment_gateway": "sbp_rub",
+          "detail_type": "phone",
+          "detail": "+79990001122",
+          "initials": "IVANOV I I",
+          "bank_name": "СБП",
+          "amount_range": {
+            "min": 1000,
+            "max": 15000
+          },
+          "is_transgran": false,
+          "priority": 10,
+          "daily_limit": null
+        }
+      ]
+    },
+    {
+      "alias": "trader_card_unstable",
+      "active": true,
+      "base_path": "/traders/trader_card_unstable",
+      "driver": "standard_h2h",
+      "auth": {
+        "access_token": "trader-card-token",
+        "merchant_id": "0c27764e-e61a-4cb4-95c5-57415c97d222",
+        "validate_access_token": true,
+        "validate_merchant_id": true
+      },
+      "selection_strategy": "first_match",
+      "default_response_profile_id": "http_500",
+      "routing_rules": [
+        {
+          "id": "sber_small_success",
+          "active": true,
+          "match": {
+            "payment_gateway": "sberbank_rub",
+            "payment_detail_type": "card",
+            "amount": {
+              "gte": 3000,
+              "lte": 30000
+            }
+          },
+          "requisite_pool": [
+            "sber_card_01"
+          ],
+          "response_profile_id": "instant_success"
+        },
+        {
+          "id": "sber_large_timeout",
+          "active": true,
+          "match": {
+            "payment_gateway": "sberbank_rub",
+            "amount": {
+              "gt": 30000
+            }
+          },
+          "requisite_pool": [
+            "sber_card_01"
+          ],
+          "response_profile_id": "hard_timeout"
+        },
+        {
+          "id": "halyk_reject",
+          "active": true,
+          "match": {
+            "payment_gateway": "halyk_kzt",
+            "amount": {
+              "gte": 1
+            }
+          },
+          "requisite_pool": [],
+          "response_profile_id": "no_requisites"
+        }
+      ],
+      "requisites": [
+        {
+          "id": "sber_card_01",
+          "active": true,
+          "payment_gateway": "sberbank_rub",
+          "detail_type": "card",
+          "detail": "2202203265411234",
+          "initials": "PETROV P P",
+          "bank_name": "Сбербанк",
+          "amount_range": {
+            "min": 3000,
+            "max": 70000
+          },
+          "is_transgran": false,
+          "priority": 10,
+          "daily_limit": 200
+        }
+      ]
+    },
+    {
+      "alias": "trader_sbp_delayed",
+      "active": true,
+      "base_path": "/traders/trader_sbp_delayed",
+      "driver": "standard_h2h",
+      "auth": {
+        "access_token": "trader-sbp-delay-token",
+        "merchant_id": "9c27764e-e61a-4cb4-95c5-57415c97d999",
+        "validate_access_token": true,
+        "validate_merchant_id": true
+      },
+      "selection_strategy": "round_robin",
+      "default_response_profile_id": "delayed_success_callback",
+      "routing_rules": [
+        {
+          "id": "sbp_delay_rule",
+          "active": true,
+          "match": {
+            "payment_gateway": "sbp_rub",
+            "payment_detail_type": "phone",
+            "amount": {
+              "gte": 1000,
+              "lte": 50000
+            }
+          },
+          "requisite_pool": [
+            "sbp_phone_01",
+            "sbp_phone_02"
+          ],
+          "response_profile_id": "delayed_success_callback"
+        }
+      ],
+      "requisites": [
+        {
+          "id": "sbp_phone_01",
+          "active": true,
+          "payment_gateway": "sbp_rub",
+          "detail_type": "phone",
+          "detail": "+79990001122",
+          "initials": "IVANOV I I",
+          "bank_name": "СБП",
+          "amount_range": {
+            "min": 1000,
+            "max": 25000
+          },
+          "is_transgran": false,
+          "priority": 10,
+          "daily_limit": null
+        },
+        {
+          "id": "sbp_phone_02",
+          "active": true,
+          "payment_gateway": "sbp_rub",
+          "detail_type": "phone",
+          "detail": "+79990004455",
+          "initials": "PETROV P P",
+          "bank_name": "СБП",
+          "amount_range": {
+            "min": 1000,
+            "max": 50000
+          },
+          "is_transgran": false,
+          "priority": 20,
+          "daily_limit": null
+        }
+      ]
+    }
+  ]
+}

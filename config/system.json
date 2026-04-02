@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "service": {
+    "name": "rich-h2h-simulator",
+    "listen_host": "0.0.0.0",
+    "listen_port": 8099,
+    "public_base_url": "https://sim.dev.rich.local",
+    "timezone": "Europe/Warsaw",
+    "config_reload_interval_sec": 5
+  },
+  "platform": {
+    "base_url": "https://platform-rich-dev.local",
+    "verify_ssl": false,
+    "timeout_ms": 10000,
+    "api_prefix": "/api/h2h"
+  },
+  "paths": {
+    "merchant_config": "./merchant.json",
+    "trader_config": "./trader.json",
+    "fixtures_dir": "../../fixtures",
+    "log_dir": "../../logs"
+  },
+  "runtime": {
+    "state_backend": "memory",
+    "idempotency_ttl_sec": 86400,
+    "order_state_ttl_sec": 604800,
+    "redis": {
+      "enabled": false,
+      "url": "redis://redis:6379/0"
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "jsonl",
+    "rotation": {
+      "when": "midnight",
+      "backup_count": 14,
+      "max_bytes": 0
+    },
+    "channels": {
+      "system": "system.log",
+      "merchant_outbound": "merchant_outbound.log",
+      "merchant_callbacks": "merchant_callbacks.log",
+      "trader_inbound": "trader_inbound.log",
+      "trader_outbound": "trader_outbound.log"
+    },
+    "payload_limits": {
+      "max_body_chars": 10000,
+      "mask_headers": [
+        "Access-Token"
+      ]
+    }
+  },
+  "control_api": {
+    "enabled": true,
+    "prefix": "/_sim",
+    "read_only_token": "light-read-token",
+    "write_token": "light-write-token"
+  }
+}

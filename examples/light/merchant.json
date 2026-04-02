@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "request_timeout_ms": 10000,
+    "poll_after_create": {
+      "enabled": true,
+      "delay_ms": 2000,
+      "attempts": 3,
+      "interval_ms": 5000
+    },
+    "callback_response": {
+      "status_code": 200,
+      "body": {
+        "success": true,
+        "message": "accepted"
+      }
+    },
+    "external_id": {
+      "mode": "pattern",
+      "pattern": "{merchant_alias}-{template_id}-{date:%Y%m%d%H%M%S}-{seq}"
+    }
+  },
+  "request_templates": [
+    {
+      "id": "light_rub_sbp",
+      "active": true,
+      "description": "Light профиль: один простой RUB/SBP запрос",
+      "request": {
+        "amount": 5000,
+        "payment_gateway": "sbp_rub",
+        "payment_detail_type": "phone",
+        "is_transgran": false
+      },
+      "post_actions": []
+    }
+  ],
+  "merchants": [
+    {
+      "alias": "merchant_light",
+      "active": true,
+      "merchant_id": "8bc8a8d0-77e2-4ff5-9ff6-b9b74fd51a11",
+      "access_token": "merchant-light-token",
+      "target": {
+        "base_url": "https://platform-rich-dev.local",
+        "api_prefix": "/api/h2h",
+        "verify_ssl": false,
+        "timeout_ms": 10000
+      },
+      "callback": {
+        "enabled": true,
+        "path": "/callbacks/merchants/merchant_light",
+        "validate_access_token": true,
+        "response_status_code": 200,
+        "response_body": {
+          "success": true,
+          "message": "callback accepted"
+        }
+      },
+      "default_headers": {
+        "X-Sim-Merchant": "merchant_light"
+      }
+    }
+  ],
+  "merchant_jobs": [
+    {
+      "id": "merchant_light_job",
+      "active": true,
+      "merchant_alias": "merchant_light",
+      "template_id": "light_rub_sbp",
+      "schedule": {
+        "start_delay_sec": 5,
+        "interval_sec": 60,
+        "requests_total": 10,
+        "jitter_sec": 0,
+        "max_inflight": 1
+      },
+      "external_id": {
+        "pattern": "light-{date:%Y%m%d}-{seq}"
+      }
+    }
+  ]
+}

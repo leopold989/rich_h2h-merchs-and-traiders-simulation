@@ -1,0 +1,577 @@
+{
+  "$defs": {
+    "CallbackResponseConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "status_code": {
+          "default": 200,
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Status Code",
+          "type": "integer"
+        },
+        "body": {
+          "additionalProperties": true,
+          "title": "Body",
+          "type": "object"
+        }
+      },
+      "title": "CallbackResponseConfig",
+      "type": "object"
+    },
+    "ExternalIdDefaultsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "const": "pattern",
+          "default": "pattern",
+          "title": "Mode",
+          "type": "string"
+        },
+        "pattern": {
+          "minLength": 1,
+          "title": "Pattern",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pattern"
+      ],
+      "title": "ExternalIdDefaultsConfig",
+      "type": "object"
+    },
+    "ExternalIdPattern": {
+      "additionalProperties": false,
+      "properties": {
+        "pattern": {
+          "minLength": 1,
+          "title": "Pattern",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pattern"
+      ],
+      "title": "ExternalIdPattern",
+      "type": "object"
+    },
+    "JobScheduleConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "start_delay_sec": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Start Delay Sec",
+          "type": "integer"
+        },
+        "interval_sec": {
+          "exclusiveMinimum": 0,
+          "title": "Interval Sec",
+          "type": "integer"
+        },
+        "requests_total": {
+          "exclusiveMinimum": 0,
+          "title": "Requests Total",
+          "type": "integer"
+        },
+        "jitter_sec": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Jitter Sec",
+          "type": "integer"
+        },
+        "max_inflight": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "title": "Max Inflight",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "interval_sec",
+        "requests_total"
+      ],
+      "title": "JobScheduleConfig",
+      "type": "object"
+    },
+    "MerchantCallbackConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "path": {
+          "pattern": "^/.*",
+          "title": "Path",
+          "type": "string"
+        },
+        "validate_access_token": {
+          "default": true,
+          "title": "Validate Access Token",
+          "type": "boolean"
+        },
+        "response_status_code": {
+          "default": 200,
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Response Status Code",
+          "type": "integer"
+        },
+        "response_body": {
+          "additionalProperties": true,
+          "title": "Response Body",
+          "type": "object"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "MerchantCallbackConfig",
+      "type": "object"
+    },
+    "MerchantConfigEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "minLength": 1,
+          "title": "Alias",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "merchant_id": {
+          "format": "uuid",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "access_token": {
+          "minLength": 1,
+          "title": "Access Token",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/MerchantTargetConfig"
+        },
+        "callback": {
+          "$ref": "#/$defs/MerchantCallbackConfig"
+        },
+        "default_headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Default Headers",
+          "type": "object"
+        }
+      },
+      "required": [
+        "alias",
+        "merchant_id",
+        "access_token",
+        "target",
+        "callback"
+      ],
+      "title": "MerchantConfigEntry",
+      "type": "object"
+    },
+    "MerchantDefaultsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "request_timeout_ms": {
+          "default": 10000,
+          "exclusiveMinimum": 0,
+          "title": "Request Timeout Ms",
+          "type": "integer"
+        },
+        "poll_after_create": {
+          "$ref": "#/$defs/PollAfterCreateConfig"
+        },
+        "callback_response": {
+          "$ref": "#/$defs/CallbackResponseConfig"
+        },
+        "external_id": {
+          "$ref": "#/$defs/ExternalIdDefaultsConfig"
+        }
+      },
+      "required": [
+        "external_id"
+      ],
+      "title": "MerchantDefaultsConfig",
+      "type": "object"
+    },
+    "MerchantJobConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "merchant_alias": {
+          "minLength": 1,
+          "title": "Merchant Alias",
+          "type": "string"
+        },
+        "template_id": {
+          "minLength": 1,
+          "title": "Template Id",
+          "type": "string"
+        },
+        "schedule": {
+          "$ref": "#/$defs/JobScheduleConfig"
+        },
+        "external_id": {
+          "$ref": "#/$defs/ExternalIdPattern"
+        }
+      },
+      "required": [
+        "id",
+        "merchant_alias",
+        "template_id",
+        "schedule",
+        "external_id"
+      ],
+      "title": "MerchantJobConfig",
+      "type": "object"
+    },
+    "MerchantTargetConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "base_url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Base Url",
+          "type": "string"
+        },
+        "api_prefix": {
+          "default": "/api/h2h",
+          "pattern": "^/.*",
+          "title": "Api Prefix",
+          "type": "string"
+        },
+        "verify_ssl": {
+          "default": false,
+          "title": "Verify Ssl",
+          "type": "boolean"
+        },
+        "timeout_ms": {
+          "default": 10000,
+          "exclusiveMinimum": 0,
+          "title": "Timeout Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "base_url"
+      ],
+      "title": "MerchantTargetConfig",
+      "type": "object"
+    },
+    "PollAfterCreateConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "delay_ms": {
+          "default": 2000,
+          "minimum": 0,
+          "title": "Delay Ms",
+          "type": "integer"
+        },
+        "attempts": {
+          "default": 3,
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "interval_ms": {
+          "default": 5000,
+          "minimum": 0,
+          "title": "Interval Ms",
+          "type": "integer"
+        }
+      },
+      "title": "PollAfterCreateConfig",
+      "type": "object"
+    },
+    "PostActionConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "cancel",
+            "confirm_client",
+            "add_receipt",
+            "dispute",
+            "finish"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "after_ms": {
+          "minimum": 0,
+          "title": "After Ms",
+          "type": "integer"
+        },
+        "if_order_status_in": {
+          "items": {
+            "type": "string"
+          },
+          "title": "If Order Status In",
+          "type": "array"
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReceiptConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "after_ms"
+      ],
+      "title": "PostActionConfig",
+      "type": "object"
+    },
+    "ReceiptConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "file",
+            "url",
+            "base64"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ReceiptConfig",
+      "type": "object"
+    },
+    "RequestTemplateConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "request": {
+          "$ref": "#/$defs/TemplateRequestConfig"
+        },
+        "post_actions": {
+          "items": {
+            "$ref": "#/$defs/PostActionConfig"
+          },
+          "title": "Post Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "request"
+      ],
+      "title": "RequestTemplateConfig",
+      "type": "object"
+    },
+    "TemplateRequestConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "exclusiveMinimum": 0,
+          "title": "Amount",
+          "type": "integer"
+        },
+        "payment_gateway": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payment Gateway"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Currency"
+        },
+        "payment_detail_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payment Detail Type"
+        },
+        "is_transgran": {
+          "default": false,
+          "title": "Is Transgran",
+          "type": "boolean"
+        },
+        "callback_url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Callback Url"
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "title": "TemplateRequestConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "defaults": {
+      "$ref": "#/$defs/MerchantDefaultsConfig"
+    },
+    "request_templates": {
+      "items": {
+        "$ref": "#/$defs/RequestTemplateConfig"
+      },
+      "title": "Request Templates",
+      "type": "array"
+    },
+    "merchants": {
+      "items": {
+        "$ref": "#/$defs/MerchantConfigEntry"
+      },
+      "title": "Merchants",
+      "type": "array"
+    },
+    "merchant_jobs": {
+      "items": {
+        "$ref": "#/$defs/MerchantJobConfig"
+      },
+      "title": "Merchant Jobs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "defaults"
+  ],
+  "title": "MerchantConfig",
+  "type": "object"
+}

@@ -1,0 +1,618 @@
+{
+  "$defs": {
+    "AmountComparator": {
+      "additionalProperties": false,
+      "properties": {
+        "gte": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gte"
+        },
+        "lte": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lte"
+        },
+        "gt": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gt"
+        },
+        "lt": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lt"
+        }
+      },
+      "title": "AmountComparator",
+      "type": "object"
+    },
+    "AmountRange": {
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "minimum": 0,
+          "title": "Min",
+          "type": "integer"
+        },
+        "max": {
+          "exclusiveMinimum": 0,
+          "title": "Max",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "title": "AmountRange",
+      "type": "object"
+    },
+    "CallbackClientConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "timeout_ms": {
+          "default": 10000,
+          "exclusiveMinimum": 0,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "verify_ssl": {
+          "default": false,
+          "title": "Verify Ssl",
+          "type": "boolean"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Headers",
+          "type": "object"
+        }
+      },
+      "title": "CallbackClientConfig",
+      "type": "object"
+    },
+    "IdempotencyConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "key_fields": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Key Fields",
+          "type": "array"
+        },
+        "ttl_sec": {
+          "default": 86400,
+          "exclusiveMinimum": 0,
+          "title": "Ttl Sec",
+          "type": "integer"
+        }
+      },
+      "title": "IdempotencyConfig",
+      "type": "object"
+    },
+    "OperationBehaviorConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "success",
+            "business_reject",
+            "timeout",
+            "http_error"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "delay_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Delay Ms",
+          "type": "integer"
+        },
+        "status_code": {
+          "anyOf": [
+            {
+              "maximum": 599,
+              "minimum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status Code"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body"
+        },
+        "callback": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OperationCallbackConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "OperationBehaviorConfig",
+      "type": "object"
+    },
+    "OperationCallbackConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "after_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "After Ms",
+          "type": "integer"
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload"
+        }
+      },
+      "title": "OperationCallbackConfig",
+      "type": "object"
+    },
+    "RequisiteConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "payment_gateway": {
+          "minLength": 1,
+          "title": "Payment Gateway",
+          "type": "string"
+        },
+        "detail_type": {
+          "minLength": 1,
+          "title": "Detail Type",
+          "type": "string"
+        },
+        "detail": {
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "initials": {
+          "minLength": 1,
+          "title": "Initials",
+          "type": "string"
+        },
+        "bank_name": {
+          "minLength": 1,
+          "title": "Bank Name",
+          "type": "string"
+        },
+        "amount_range": {
+          "$ref": "#/$defs/AmountRange"
+        },
+        "is_transgran": {
+          "default": false,
+          "title": "Is Transgran",
+          "type": "boolean"
+        },
+        "priority": {
+          "default": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "daily_limit": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Daily Limit"
+        }
+      },
+      "required": [
+        "id",
+        "payment_gateway",
+        "detail_type",
+        "detail",
+        "initials",
+        "bank_name",
+        "amount_range"
+      ],
+      "title": "RequisiteConfig",
+      "type": "object"
+    },
+    "ResponseProfileConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "create_order": {
+          "$ref": "#/$defs/OperationBehaviorConfig"
+        },
+        "cancel_order": {
+          "$ref": "#/$defs/OperationBehaviorConfig"
+        },
+        "confirm_client": {
+          "$ref": "#/$defs/OperationBehaviorConfig"
+        },
+        "add_receipt": {
+          "$ref": "#/$defs/OperationBehaviorConfig"
+        },
+        "open_dispute": {
+          "$ref": "#/$defs/OperationBehaviorConfig"
+        }
+      },
+      "required": [
+        "id",
+        "create_order",
+        "cancel_order",
+        "confirm_client",
+        "add_receipt",
+        "open_dispute"
+      ],
+      "title": "ResponseProfileConfig",
+      "type": "object"
+    },
+    "RoutingMatchConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "payment_gateway": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payment Gateway"
+        },
+        "payment_detail_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payment Detail Type"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AmountComparator"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "is_transgran": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Is Transgran"
+        },
+        "transgran": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transgran"
+        }
+      },
+      "title": "RoutingMatchConfig",
+      "type": "object"
+    },
+    "RoutingRuleConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "match": {
+          "$ref": "#/$defs/RoutingMatchConfig"
+        },
+        "requisite_pool": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requisite Pool",
+          "type": "array"
+        },
+        "response_profile_id": {
+          "minLength": 1,
+          "title": "Response Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "match",
+        "response_profile_id"
+      ],
+      "title": "RoutingRuleConfig",
+      "type": "object"
+    },
+    "TraderAuthConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "access_token": {
+          "minLength": 1,
+          "title": "Access Token",
+          "type": "string"
+        },
+        "merchant_id": {
+          "format": "uuid",
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "validate_access_token": {
+          "default": true,
+          "title": "Validate Access Token",
+          "type": "boolean"
+        },
+        "validate_merchant_id": {
+          "default": true,
+          "title": "Validate Merchant Id",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "access_token",
+        "merchant_id"
+      ],
+      "title": "TraderAuthConfig",
+      "type": "object"
+    },
+    "TraderConfigEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "minLength": 1,
+          "title": "Alias",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "base_path": {
+          "pattern": "^/.*",
+          "title": "Base Path",
+          "type": "string"
+        },
+        "driver": {
+          "const": "standard_h2h",
+          "default": "standard_h2h",
+          "title": "Driver",
+          "type": "string"
+        },
+        "auth": {
+          "$ref": "#/$defs/TraderAuthConfig"
+        },
+        "selection_strategy": {
+          "default": "first_match",
+          "enum": [
+            "first_match",
+            "round_robin",
+            "random"
+          ],
+          "title": "Selection Strategy",
+          "type": "string"
+        },
+        "default_response_profile_id": {
+          "minLength": 1,
+          "title": "Default Response Profile Id",
+          "type": "string"
+        },
+        "routing_rules": {
+          "items": {
+            "$ref": "#/$defs/RoutingRuleConfig"
+          },
+          "title": "Routing Rules",
+          "type": "array"
+        },
+        "requisites": {
+          "items": {
+            "$ref": "#/$defs/RequisiteConfig"
+          },
+          "title": "Requisites",
+          "type": "array"
+        }
+      },
+      "required": [
+        "alias",
+        "base_path",
+        "auth",
+        "default_response_profile_id"
+      ],
+      "title": "TraderConfigEntry",
+      "type": "object"
+    },
+    "TraderDefaultsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "driver": {
+          "const": "standard_h2h",
+          "default": "standard_h2h",
+          "title": "Driver",
+          "type": "string"
+        },
+        "api_prefix": {
+          "default": "/api/h2h",
+          "pattern": "^/.*",
+          "title": "Api Prefix",
+          "type": "string"
+        },
+        "validate_access_token": {
+          "default": true,
+          "title": "Validate Access Token",
+          "type": "boolean"
+        },
+        "validate_merchant_id": {
+          "default": true,
+          "title": "Validate Merchant Id",
+          "type": "boolean"
+        },
+        "selection_strategy": {
+          "default": "first_match",
+          "enum": [
+            "first_match",
+            "round_robin",
+            "random"
+          ],
+          "title": "Selection Strategy",
+          "type": "string"
+        },
+        "idempotency": {
+          "$ref": "#/$defs/IdempotencyConfig"
+        },
+        "callback_client": {
+          "$ref": "#/$defs/CallbackClientConfig"
+        }
+      },
+      "title": "TraderDefaultsConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "defaults": {
+      "$ref": "#/$defs/TraderDefaultsConfig"
+    },
+    "response_profiles": {
+      "items": {
+        "$ref": "#/$defs/ResponseProfileConfig"
+      },
+      "title": "Response Profiles",
+      "type": "array"
+    },
+    "traders": {
+      "items": {
+        "$ref": "#/$defs/TraderConfigEntry"
+      },
+      "title": "Traders",
+      "type": "array"
+    }
+  },
+  "required": [
+    "defaults"
+  ],
+  "title": "TraderConfig",
+  "type": "object"
+}
