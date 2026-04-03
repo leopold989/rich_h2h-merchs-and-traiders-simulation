@@ -57,3 +57,13 @@ make run-light
 - [docs/config/trader.md](docs/config/trader.md)
 - [docs/testing/profile-catalog.md](docs/testing/profile-catalog.md)
 - [docs/testing/run-tests.md](docs/testing/run-tests.md)
+
+
+## Patch 02 status
+
+Merchant runner core is implemented. See `docs/patches/patch-02.md` and `docs/quickstart/merchant-light.md`.
+
+
+## Patch 03 status
+
+Merchant advanced flows are implemented: polling, post actions, receipt uploads. See `docs/patches/patch-03.md` and `docs/scenarios/merchant-post-actions.md`.
