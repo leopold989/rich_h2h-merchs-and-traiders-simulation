@@ -8,10 +8,15 @@ from fastapi import FastAPI
 from rich_h2h_simulator.api import build_router
 from rich_h2h_simulator.config_loader import ConfigManager
 from rich_h2h_simulator.logging_setup import log_event, setup_logging
+from rich_h2h_simulator.merchant_runner import TransportFactory
 from rich_h2h_simulator.runtime import RuntimeState
 
 
-def create_app(system_config_path: str | Path | None = None) -> FastAPI:
+def create_app(
+    system_config_path: str | Path | None = None,
+    *,
+    merchant_transport_factory: TransportFactory | None = None,
+) -> FastAPI:
     system_path = Path(system_config_path or 'config/system.json').resolve()
     config_manager = ConfigManager(system_path)
     log_dir = (config_manager.bundle.system_path.parent / config_manager.bundle.system.paths.log_dir).resolve()
@@ -19,7 +24,11 @@ def create_app(system_config_path: str | Path | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        runtime = RuntimeState(config_manager, logger_registry)
+        runtime = RuntimeState(
+            config_manager,
+            logger_registry,
+            merchant_transport_factory=merchant_transport_factory,
+        )
         app.state.runtime = runtime
         log_event(logger_registry.get('system'), 'app_starting', {'system_config': str(system_path)})
         await runtime.start()
@@ -30,7 +39,7 @@ def create_app(system_config_path: str | Path | None = None) -> FastAPI:
 
     app = FastAPI(
         title='Rich H2H Simulator',
-        version='0.1.0.post1',
+        version='0.3.0',
         docs_url='/docs',
         redoc_url='/redoc',
         lifespan=lifespan,
