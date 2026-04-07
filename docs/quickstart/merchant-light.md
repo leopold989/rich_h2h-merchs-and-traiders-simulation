@@ -1,48 +1,50 @@
 # Merchant quickstart — light профиль
 
-1. Установить зависимости и активировать editable install:
+Для полного мануала по установке и первому запуску смотри [light-e2e.md](light-e2e.md).
+
+Этот документ — короткая памятка именно по merchant-side.
+
+## Что нужно для merchant-side прогона
+
+- доступная `platform_rich-dev` или stub-платформа;
+- корректные `merchant_id` и `access_token`;
+- достижимый `service.public_base_url`, если ждёшь callbacks;
+- активный `merchant_jobs[]`.
+
+## Минимальные шаги
+
+1. Подготовить workspace:
 
    ```bash
-   pip install -e .[dev]
+   python scripts/install_profile.py --profile light --workspace .sim-workspaces/light --overwrite
    ```
 
-2. Скопировать `examples/light/*` в рабочий каталог `config/`.
+2. Проверить `merchant.json`:
+   - `merchants[0].merchant_id`
+   - `merchants[0].access_token`
+   - `merchants[0].target.base_url`
+   - `merchant_jobs[0].active`
 
-3. В `config/system.json` проверить:
-   - `service.public_base_url`
-   - `platform.base_url`
-   - пути до `merchant.json`, `trader.json`, `fixtures`, `logs`
-
-4. В `config/merchant.json` убедиться, что:
-   - `merchants[0].merchant_id` существует в dev-платформе;
-   - `merchants[0].access_token` соответствует этому мерчанту;
-   - `merchant_jobs[0].active = true`.
-
-5. Поднять сервис:
+3. Запустить сервис:
 
    ```bash
-   uvicorn rich_h2h_simulator.app_factory:create_app --factory --host 0.0.0.0 --port 8099
+   python scripts/run_profile.py --system-config .sim-workspaces/light/config/system.json
    ```
 
-6. Проверить здоровье:
-
-   ```bash
-   curl http://127.0.0.1:8099/health
-   ```
-
-7. Проверить runtime-state:
+4. Смотреть состояние:
 
    ```bash
    curl -H 'X-Control-Token: light-read-token' http://127.0.0.1:8099/_sim/state
    ```
 
-8. Убедиться, что в `merchant_runtime.orders_recent` появился созданный H2H order.
+5. Смотреть логи:
 
-9. Проверить логи:
-   - `logs/merchant_outbound.log`
-   - `logs/merchant_callbacks.log`
+   ```bash
+   python scripts/tail_logs.py --system-config .sim-workspaces/light/config/system.json --channels merchant_outbound merchant_callbacks --follow
+   ```
 
-10. Для ручной проверки callback отправить POST на путь из `merchants[].callback.path` с заголовком `Access-Token` мерчанта.
+## Что смотреть в state
 
-
-11. Для проверки follow-up сценариев включить `request_templates[].post_actions` и затем снова посмотреть `/_sim/state`, секцию `merchant_runtime.orders_recent[].actions`.
+- `merchant_runtime.jobs`
+- `merchant_runtime.orders_recent`
+- `merchant_runtime.orders_recent[].actions`

@@ -1,75 +1,110 @@
 # Установка системы
 
-## Что устанавливаем на Patch 01
+Этот документ описывает **установку самого сервиса**. Настройка конкретных merchant/trader сценариев вынесена отдельно.
 
-На этом этапе поднимается **каркас сервиса**, а не полноценный merchant/trader runtime.
+## 1. Требования
 
-## Требования
+Минимальный набор:
 
 - Python 3.12+
-- pip
-- Docker + docker compose — опционально
-- доступ к локальному файловому каталогу для конфигов и логов
+- `pip`
+- Git
+- доступ к локальному каталогу для `config/`, `logs/`, `fixtures/`
 
-## Вариант A — локально через venv
+Опционально:
 
-### 1. Создай виртуальное окружение
+- Docker + Docker Compose
+
+## 2. Клонирование и структура проекта
+
+После клонирования у тебя должны быть каталоги:
+
+```text
+src/
+docs/
+examples/
+fixtures/
+schemas/
+scripts/
+config/
+logs/
+```
+
+Если `config/` пустой — это нормально. Для первого запуска его удобнее готовить через helper script.
+
+## 3. Установка через venv
+
+### Шаг 1. Создай окружение
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2. Установи пакет
+### Шаг 2. Установи пакет
 
 ```bash
 pip install -e .[dev]
 ```
 
-### 3. Проверь, что структура проекта на месте
-
-Нужны каталоги:
-
-```text
-config/
-examples/
-fixtures/
-logs/
-schemas/
-```
-
-### 4. Провалидация конфигов
+### Шаг 3. Проверь, что package CLI доступен
 
 ```bash
-python scripts/validate_config.py --system-config examples/light/system.json --dump-state
+python scripts/run_profile.py --help
+rich-h2h-simulator-validate --help
 ```
 
-### 5. Запусти сервис
+Если CLI не найден — окружение активировано не тем shell’ом или `pip install -e .[dev]` не отработал.
+
+## 4. Установка через Docker
+
+### Шаг 1. Подготовь `.env`
 
 ```bash
-SIM_SYSTEM_CONFIG=examples/light/system.json rich-h2h-simulator
+cp .env.example .env
 ```
 
-## Вариант B — через Docker
+### Шаг 2. При необходимости подправь переменные
 
-### 1. Собери образ
+Обычно достаточно:
+
+- `SIM_PORT`
+- `SIM_CONFIG_DIR`
+- `SIM_LOGS_DIR`
+- `SIM_FIXTURES_DIR`
+
+### Шаг 3. Собери образ
 
 ```bash
 docker compose build
 ```
 
-### 2. Проверь каталоги volume mount
-
-- `./config`
-- `./logs`
-- `./fixtures`
-
-### 3. Запусти контейнер
+### Шаг 4. Запусти контейнер
 
 ```bash
 docker compose up
 ```
 
-## После установки
+Потом проверь:
 
-Следующий шаг — [docs/install/system-setup.md](system-setup.md).
+```bash
+curl http://127.0.0.1:8099/health
+```
+
+## 5. Что делать после установки
+
+Дальше есть два рабочих пути:
+
+### Путь A. Запуск прямо из `examples/`
+Подходит для первого знакомства и локального smoke.
+
+Смотри: [docs/quickstart/light-e2e.md](../quickstart/light-e2e.md)
+
+### Путь B. Подготовить отдельный workspace
+Подходит для реальной работы с dev-стендом, когда не хочется править `examples/`.
+
+```bash
+python scripts/install_profile.py --profile light --workspace .sim-workspaces/light --overwrite
+```
+
+Дальше смотри: [docs/install/system-setup.md](system-setup.md)

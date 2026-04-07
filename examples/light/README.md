@@ -1,17 +1,20 @@
 # Light profile
 
-Минимальный профиль для первого запуска.
+Минимальный профиль для первого запуска и smoke-проверки.
 
-Что внутри:
-- 1 мерчант
-- 1 request template
-- 1 merchant job
-- 1 трейдер
-- 1 response profile `instant_success`
+## Когда использовать
 
-Назначение:
-- проверить установку сервиса;
-- проверить валидацию конфигов;
-- познакомиться с control API и логами.
+- новый человек только поднимает сервис;
+- нужен быстрый sanity-check после изменений;
+- надо проверить control API и trader/provider side без подключения к dev-платформе.
 
-Используй вместе с `docs/quickstart/light-smoke.md`.
+## Самый простой путь
+
+```bash
+python scripts/install_profile.py --profile light --workspace .sim-workspaces/light --overwrite
+python scripts/run_profile.py --system-config .sim-workspaces/light/config/system.json
+python scripts/http_smoke.py --system-config .sim-workspaces/light/config/system.json --base-url http://127.0.0.1:8099
+```
+
+Полный мануал:
+- [docs/quickstart/light-e2e.md](../../docs/quickstart/light-e2e.md)

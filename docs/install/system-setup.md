@@ -1,94 +1,141 @@
 # Настройка системы
 
-Этот документ описывает **саму систему**, без подробной настройки боевых merchant/trader сценариев.
+Этот документ про **настройку самого сервиса**: где лежат конфиги, как их подмонтировать, как выбрать профиль и как проверить, что система вообще поднялась.
 
-## 1. Выбери базовый профиль
+## 1. Базовый способ — сделать отдельный workspace
 
-Для первого запуска используй `examples/light/`.
+Для первой рабочей настройки удобнее не редактировать `examples/`, а развернуть профиль в отдельный каталог.
 
-Скопируй его в рабочий каталог: 
+### Light workspace
 
 ```bash
-cp examples/light/system.json config/system.json
-cp examples/light/merchant.json config/merchant.json
-cp examples/light/trader.json config/trader.json
+python scripts/install_profile.py --profile light --workspace .sim-workspaces/light --overwrite
 ```
 
-## 2. Проверь `system.json`
+### Medium workspace
 
-Минимум для корректного старта:
+```bash
+python scripts/install_profile.py --profile medium --workspace .sim-workspaces/medium --overwrite
+```
+
+После этого у тебя появится структура:
+
+```text
+.sim-workspaces/light/
+  config/
+    system.json
+    merchant.json
+    trader.json
+  fixtures/
+  logs/
+```
+
+## 2. Какие файлы отвечает за что
+
+### `system.json`
+Определяет:
+- host/port сервиса;
+- публичный base URL;
+- пути до `merchant.json` и `trader.json`;
+- каталог логов;
+- control API;
+- runtime backend.
+
+### `merchant.json`
+Определяет:
+- request templates;
+- merchants;
+- merchant jobs;
+- poll-after-create и post-actions.
+
+### `trader.json`
+Определяет:
+- response profiles;
+- trader aliases;
+- requisites;
+- routing rules;
+- selection strategy.
+
+## 3. Что править в первую очередь
+
+### Light профиль
+Для первого запуска обычно достаточно не трогать `merchant.json` и `trader.json`, а в `system.json` проверить только:
 
 - `service.listen_port`
 - `service.public_base_url`
-- `paths.merchant_config`
-- `paths.trader_config`
-- `paths.fixtures_dir`
-- `paths.log_dir`
 - `control_api.read_only_token`
 - `control_api.write_token`
 
-## 3. Проверь относительные пути
+### Medium профиль
+Перед подключением к реальной dev-платформе дополнительно надо проверить:
 
-Все относительные пути считаются от местоположения `system.json`.
+- `platform.base_url`
+- `merchants[].merchant_id`
+- `merchants[].access_token`
+- `traders[].auth.access_token`
+- `traders[].auth.merchant_id`
 
-Пример:
-
-```json
-"paths": {
-  "merchant_config": "./merchant.json",
-  "trader_config": "./trader.json",
-  "fixtures_dir": "../fixtures",
-  "log_dir": "../logs"
-}
-```
-
-## 4. Запусти валидацию до старта сервиса
+## 4. Как проверить конфиги до старта
 
 ```bash
-python scripts/validate_config.py --system-config config/system.json --dump-state
+python scripts/validate_config.py --system-config .sim-workspaces/light/config/system.json --dump-state
 ```
 
-## 5. Подними сервис
+Если команда упала — не запускай сервис, сначала поправь конфиг.
+
+## 5. Как запустить сервис
 
 ```bash
-SIM_SYSTEM_CONFIG=config/system.json rich-h2h-simulator
+python scripts/run_profile.py --system-config .sim-workspaces/light/config/system.json
 ```
 
-## 6. Проверь доступность
+Либо прямо из примера:
+
+```bash
+python scripts/run_profile.py --profile light
+```
+
+## 6. Как проверить, что система поднялась
+
+### Health
 
 ```bash
 curl http://127.0.0.1:8099/health
 ```
 
-## 7. Проверь control API
+### State
 
 ```bash
-curl -H 'X-Control-Token: <read-token>' http://127.0.0.1:8099/_sim/state
+curl -H 'X-Control-Token: light-read-token' http://127.0.0.1:8099/_sim/state
 ```
 
-## 8. Проверь, что hot reload работает
-
-1. Измени `config/merchant.json`.
-2. Подожди `service.config_reload_interval_sec`.
-3. Проверь `/_sim/state`.
-4. Либо вызови ручной reload:
+### Config dump
 
 ```bash
-curl -X POST -H 'X-Control-Token: <write-token>' http://127.0.0.1:8099/_sim/reload
+curl -H 'X-Control-Token: light-read-token' http://127.0.0.1:8099/_sim/config
 ```
 
-## 9. Где смотреть логи
+### Manual reload
 
-Каталог задаётся в `system.json -> paths.log_dir`.
+```bash
+curl -X POST -H 'X-Control-Token: light-write-token' http://127.0.0.1:8099/_sim/reload
+```
 
-Минимум на Patch 01 проверяй:
-- `system.log`
+## 7. Где смотреть логи
 
-## 10. Что ожидать на Patch 01
+### Разово
 
-После настройки ты должен получить:
-- успешный старт сервиса;
-- валидные схемы;
-- работающий control API;
-- системный лог;
-- light/medium/heavy примеры, готовые к дальнейшим патчам.
+```bash
+python scripts/tail_logs.py --system-config .sim-workspaces/light/config/system.json --lines 20
+```
+
+### В режиме follow
+
+```bash
+python scripts/tail_logs.py --system-config .sim-workspaces/light/config/system.json --follow
+```
+
+## 8. Следующий шаг
+
+- для первого end-to-end запуска смотри [docs/quickstart/light-e2e.md](../quickstart/light-e2e.md)
+- для подключения к dev-платформе смотри [docs/quickstart/medium-e2e.md](../quickstart/medium-e2e.md)

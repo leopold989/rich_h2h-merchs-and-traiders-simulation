@@ -1,11 +1,23 @@
 # Heavy profile
 
-Профиль для серьёзной прогонки и подготовки к нагрузочным сценариям.
+Профиль для серьёзных прогонов и stress-like сценариев.
 
-Что внутри:
-- 3 мерчанта;
-- несколько burst-like jobs;
-- 3 трейдера / профиля ответа;
-- success, delayed callback, no requisites, timeout, http error.
+## Важно
 
-На Patch 01 профиль служит эталоном структуры и валидации. Полноценная нагрузочная прогонка будет закрыта на поздних патчах.
+Этот профиль не рекомендуется включать бездумно на shared dev. Сначала уменьши расписания, `requests_total` и `max_inflight`, если запускаешь не на выделенном стенде.
+
+## Базовый старт
+
+```bash
+python scripts/install_profile.py --profile heavy --workspace .sim-workspaces/heavy --overwrite
+python scripts/validate_config.py --system-config .sim-workspaces/heavy/config/system.json
+```
+
+Перед запуском внимательно проверь:
+- `merchant_jobs[].schedule`
+- `platform.base_url`
+- `traders[].response profiles`
+- доступность `public_base_url`
+
+Подробнее про выбор профиля:
+- [docs/testing/profile-catalog.md](../../docs/testing/profile-catalog.md)

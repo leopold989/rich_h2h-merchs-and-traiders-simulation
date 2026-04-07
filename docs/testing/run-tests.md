@@ -1,6 +1,6 @@
-# Как прогонять тесты и проверки на Patch 01
+# Как прогонять тесты и проверки
 
-## 1. Прогон схем и валидации
+## 1. Валидация профилей
 
 ```bash
 make validate-light
@@ -8,60 +8,82 @@ make validate-medium
 make validate-heavy
 ```
 
-Или напрямую:
+Или точечно:
 
 ```bash
-python scripts/validate_config.py --system-config examples/light/system.json --dump-state
+python scripts/validate_config.py --system-config examples/light/system.json
 python scripts/validate_config.py --system-config examples/medium/system.json
 python scripts/validate_config.py --system-config examples/heavy/system.json
 ```
 
-## 2. Генерация JSON Schema
+## 2. Подготовка workspace-профилей
+
+```bash
+make install-light
+make install-medium
+```
+
+## 3. Smoke-запуск вручную
+
+Подними сервис:
+
+```bash
+python scripts/run_profile.py --system-config .sim-workspaces/light/config/system.json
+```
+
+Во втором терминале:
+
+```bash
+make smoke-light
+python scripts/tail_logs.py --system-config .sim-workspaces/light/config/system.json --lines 20
+```
+
+## 4. Генерация JSON Schema
 
 ```bash
 make schemas
 ```
 
-На выходе обновятся файлы:
+Проверяй, что обновились:
 
 - `schemas/system.schema.json`
 - `schemas/merchant.schema.json`
 - `schemas/trader.schema.json`
 
-## 3. Прогон тестов
+## 5. Полный тестовый прогон
 
 ```bash
 make test
 ```
 
-Сейчас тестами покрыты:
+## 6. Точечные группы тестов
 
-- валидные light/medium профили;
-- негативные кейсы конфигов;
-- control API;
-- hot reload;
-- инициализация логов.
-
-## 4. Smoke-старт сервиса
+### Merchant runtime
 
 ```bash
-make run-light
+pytest tests/test_merchant_runner_core.py tests/test_merchant_post_actions.py
 ```
 
-Потом проверь:
-
-```bash
-curl http://127.0.0.1:8099/health
-curl -H 'X-Control-Token: light-read-token' http://127.0.0.1:8099/_sim/state
-```
-
-
-## Trader tests
-
-```bash
-pytest tests/test_trader_runner_core.py
-```
+### Trader runtime
 
 ```bash
 pytest tests/test_trader_runner_core.py tests/test_trader_advanced_behaviors.py
 ```
+
+### Patch 06 devtools и profile smoke
+
+```bash
+pytest tests/test_devtools_scripts.py tests/test_examples_e2e_smoke.py
+```
+
+## 7. Что считается минимумом перед merge
+
+Минимальный набор:
+
+```bash
+make validate-light
+make validate-medium
+pytest
+```
+
+Если менялись только docs/helper scripts, всё равно полезно прогнать хотя бы profile smoke tests.
