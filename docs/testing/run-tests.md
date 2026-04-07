@@ -54,3 +54,14 @@ make run-light
 curl http://127.0.0.1:8099/health
 curl -H 'X-Control-Token: light-read-token' http://127.0.0.1:8099/_sim/state
 ```
+
+
+## Trader tests
+
+```bash
+pytest tests/test_trader_runner_core.py
+```
+
+```bash
+pytest tests/test_trader_runner_core.py tests/test_trader_advanced_behaviors.py
+```

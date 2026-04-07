@@ -10,12 +10,14 @@ from rich_h2h_simulator.config_loader import ConfigManager
 from rich_h2h_simulator.logging_setup import log_event, setup_logging
 from rich_h2h_simulator.merchant_runner import TransportFactory
 from rich_h2h_simulator.runtime import RuntimeState
+from rich_h2h_simulator.trader_runner import TransportFactory as TraderTransportFactory
 
 
 def create_app(
     system_config_path: str | Path | None = None,
     *,
     merchant_transport_factory: TransportFactory | None = None,
+    trader_callback_transport_factory: TraderTransportFactory | None = None,
 ) -> FastAPI:
     system_path = Path(system_config_path or 'config/system.json').resolve()
     config_manager = ConfigManager(system_path)
@@ -28,6 +30,7 @@ def create_app(
             config_manager,
             logger_registry,
             merchant_transport_factory=merchant_transport_factory,
+            trader_callback_transport_factory=trader_callback_transport_factory,
         )
         app.state.runtime = runtime
         log_event(logger_registry.get('system'), 'app_starting', {'system_config': str(system_path)})
@@ -39,7 +42,7 @@ def create_app(
 
     app = FastAPI(
         title='Rich H2H Simulator',
-        version='0.3.0',
+        version='0.5.0',
         docs_url='/docs',
         redoc_url='/redoc',
         lifespan=lifespan,

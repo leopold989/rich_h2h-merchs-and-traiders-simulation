@@ -127,3 +127,15 @@ Patch 01 ловит:
 - неизвестный `default_response_profile_id`;
 - неизвестный `routing_rules[].response_profile_id`;
 - ссылки на отсутствующие requisites в `requisite_pool`.
+
+
+## Patch 04 notes
+
+На Patch 04 уже работают базовые provider endpoints `create/show/cancel` и idempotency.
+`confirm-client`, `add-receipt`, `dispute` и delayed callbacks добавляются следующим патчем.
+
+
+## Patch 05 notes
+
+На Patch 05 provider-side уже поддерживает `confirm-client`, `add-receipt`, `dispute` и delayed callbacks.
+При callback payload симулятор автоматически добавляет `order_id/provider_order_id/external_id/status/sub_status`, чтобы callback нормально разбирался платформой.
