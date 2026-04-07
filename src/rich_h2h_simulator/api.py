@@ -50,36 +50,48 @@ def build_router(control_prefix: str = "/_sim") -> APIRouter:
             'attempted_at': result.attempted_at.isoformat(),
         }
 
-    @router.post('/{full_path:path}')
-    async def merchant_callback_catch_all(
+    @router.api_route('/{full_path:path}', methods=['GET', 'PATCH', 'POST'])
+    async def dynamic_dispatch(
         request: Request,
         full_path: str,
         access_token: str | None = Header(default=None, alias='Access-Token'),
     ) -> Response:
         runtime: RuntimeState = request.app.state.runtime
         path = '/' + full_path
-        try:
-            body = await _read_request_body(request)
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         headers = {key: value for key, value in request.headers.items()}
-        try:
-            callback_response = await runtime.merchant_runner.handle_callback(
-                path,
-                access_token=access_token,
-                body=body,
-                headers=headers,
-            )
-        except PermissionError as exc:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-        if callback_response is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='route not found')
-        status_code, response_body = callback_response
-        return Response(
-            content=json.dumps(response_body, ensure_ascii=False),
-            status_code=status_code,
-            media_type='application/json',
-        )
+
+        if runtime.trader_runner.matches_path(path):
+            trader_response = await runtime.trader_runner.handle_request(request.method, path, headers, request)
+            if trader_response is not None:
+                return Response(
+                    content=json.dumps(trader_response.body, ensure_ascii=False),
+                    status_code=trader_response.status_code,
+                    media_type='application/json',
+                )
+
+        if request.method == 'POST':
+            try:
+                body = await _read_request_body(request)
+            except ValueError as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            try:
+                callback_response = await runtime.merchant_runner.handle_callback(
+                    path,
+                    access_token=access_token,
+                    body=body,
+                    headers=headers,
+                )
+            except PermissionError as exc:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+            if callback_response is not None:
+                status_code, response_body = callback_response
+                return Response(
+                    content=json.dumps(response_body, ensure_ascii=False),
+                    status_code=status_code,
+                    media_type='application/json',
+                )
+
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='route not found')
 
     return router
 

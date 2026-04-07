@@ -67,3 +67,10 @@ Merchant runner core is implemented. See `docs/patches/patch-02.md` and `docs/qu
 ## Patch 03 status
 
 Merchant advanced flows are implemented: polling, post actions, receipt uploads. See `docs/patches/patch-03.md` and `docs/scenarios/merchant-post-actions.md`.
+
+- [docs/patches/patch-04.md](docs/patches/patch-04.md)
+- [docs/quickstart/trader-light.md](docs/quickstart/trader-light.md)
+- [docs/scenarios/trader-basic.md](docs/scenarios/trader-basic.md)
+- [docs/patches/patch-05.md](docs/patches/patch-05.md)
+- [docs/scenarios/trader-callbacks.md](docs/scenarios/trader-callbacks.md)
+- [docs/scenarios/no-requisites-timeout-error.md](docs/scenarios/no-requisites-timeout-error.md)

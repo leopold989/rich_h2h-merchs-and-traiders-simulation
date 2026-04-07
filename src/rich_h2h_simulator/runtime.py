@@ -7,6 +7,7 @@ from typing import Any
 from rich_h2h_simulator.config_loader import ConfigManager
 from rich_h2h_simulator.logging_setup import ChannelLoggerRegistry, log_event
 from rich_h2h_simulator.merchant_runner import MerchantRunner, TransportFactory
+from rich_h2h_simulator.trader_runner import TraderRunner, TransportFactory as TraderTransportFactory
 
 
 class RuntimeState:
@@ -16,6 +17,7 @@ class RuntimeState:
         logger_registry: ChannelLoggerRegistry,
         *,
         merchant_transport_factory: TransportFactory | None = None,
+        trader_callback_transport_factory: TraderTransportFactory | None = None,
     ) -> None:
         self.config_manager = config_manager
         self.logger_registry = logger_registry
@@ -24,10 +26,16 @@ class RuntimeState:
             logger_registry,
             transport_factory=merchant_transport_factory,
         )
+        self.trader_runner = TraderRunner(
+            config_manager,
+            logger_registry,
+            callback_transport_factory=trader_callback_transport_factory,
+        )
         self._reload_task: asyncio.Task[Any] | None = None
 
     async def start(self) -> None:
         await self.merchant_runner.start()
+        await self.trader_runner.start()
         await self._start_reloader()
         log_event(self.logger_registry.get('system'), 'runtime_started', await self.get_state_snapshot())
 
@@ -36,6 +44,7 @@ class RuntimeState:
             self._reload_task.cancel()
             with suppress(asyncio.CancelledError):
                 await self._reload_task
+        await self.trader_runner.stop()
         await self.merchant_runner.stop()
         log_event(self.logger_registry.get('system'), 'runtime_stopped', {})
 
@@ -68,9 +77,11 @@ class RuntimeState:
         result = self.config_manager.reload(force=force)
         if result.success and result.changed:
             await self.merchant_runner.reconfigure(force=True)
+            await self.trader_runner.reconfigure(force=True)
         return result
 
     async def get_state_snapshot(self) -> dict[str, Any]:
         state = self.config_manager.get_state_snapshot()
         state['merchant_runtime'] = await self.merchant_runner.get_runtime_summary()
+        state['trader_runtime'] = await self.trader_runner.get_runtime_summary()
         return state
