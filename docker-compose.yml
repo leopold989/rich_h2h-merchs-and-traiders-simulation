@@ -2,13 +2,25 @@ version: '3.9'
 services:
   rich-h2h-simulator:
     build: .
-    container_name: rich-h2h-simulator
+    container_name: ${SIM_CONTAINER_NAME:-rich-h2h-simulator}
     ports:
-      - '8099:8099'
+      - '${SIM_PORT:-8099}:8099'
     environment:
-      SIM_SYSTEM_CONFIG: /app/config/system.json
+      SIM_SYSTEM_CONFIG: ${SIM_SYSTEM_CONFIG:-/app/config/system.json}
     volumes:
-      - ./config:/app/config
-      - ./logs:/app/logs
-      - ./fixtures:/app/fixtures
+      - ${SIM_CONFIG_DIR:-./config}:/app/config
+      - ${SIM_LOGS_DIR:-./logs}:/app/logs
+      - ${SIM_FIXTURES_DIR:-./fixtures}:/app/fixtures
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8099/health", timeout=2).read()'
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped

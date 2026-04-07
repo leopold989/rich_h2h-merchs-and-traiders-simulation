@@ -1,76 +1,137 @@
-# Rich H2H Simulator — Patch 01
+# Rich H2H Simulator
 
-Patch 01 закрывает базовый каркас проекта:
+Dev-only сервис для тестирования H2H-интеграций вокруг `platform_rich-dev`.
 
-- структура отдельного Python/FastAPI сервиса;
-- финальные JSON-схемы `system.json`, `merchant.json`, `trader.json`;
-- загрузка и валидация конфигов;
-- JSON Schema экспорт;
-- `GET /health`, `GET /_sim/config`, `GET /_sim/state`, `POST /_sim/reload`;
+Сервис умеет работать в двух ролях:
+
+- **merchant simulator** — шлёт H2H-запросы в dev-платформу по расписанию;
+- **trader / requisite provider simulator** — поднимает provider-side H2H endpoints и отдаёт тестовые реквизиты по конфигу.
+
+Проект рассчитан на отдельную кодовую базу и отдельный compose-контейнер. Конфигурация хранится в трёх JSON-файлах:
+
+```text
+config/
+  system.json
+  merchant.json
+  trader.json
+```
+
+## Что уже реализовано к Patch 06
+
+- каркас FastAPI-сервиса и control API;
+- финальные схемы `system.json`, `merchant.json`, `trader.json`;
 - hot reload конфигов;
-- инициализация раздельных файловых логов;
-- light / medium / heavy примеры конфигов;
-- базовая документация по установке, настройке, схемам и тестированию;
-- unit/smoke tests для каркаса.
-
-В этом патче **ещё не реализованы** merchant runner и trader emulator. То есть сервис уже умеет подниматься, валидировать контракты и работать как контрольный слой, но не создаёт H2H-трафик и не поднимает trader endpoints.
+- merchant runner:
+  - scheduler;
+  - create order;
+  - poll-after-create;
+  - callback receiver;
+  - `cancel`, `confirm_client`, `add_receipt`, `dispute`, `finish`;
+- trader/provider side:
+  - create / get / cancel / confirm-client / add-receipt / dispute;
+  - auth по `Access-Token`;
+  - idempotency по `merchant_id + external_id`;
+  - selection strategy `first_match | round_robin | random`;
+  - delayed callbacks;
+  - `success | business_reject | timeout | http_error` сценарии;
+- JSONL-логи по раздельным каналам;
+- light / medium / heavy профили;
+- helper scripts для установки профиля, запуска, smoke-check и просмотра логов;
+- step-by-step документация для нового человека.
 
 ## Быстрый старт
+
+### Вариант 1. Запуск прямо из примера
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
 python scripts/validate_config.py --system-config examples/light/system.json --dump-state
-SIM_SYSTEM_CONFIG=examples/light/system.json rich-h2h-simulator
+python scripts/run_profile.py --profile light
 ```
 
-Проверка:
+Во втором терминале:
 
 ```bash
-curl http://127.0.0.1:8099/health
-curl -H 'X-Control-Token: light-read-token' http://127.0.0.1:8099/_sim/state
-curl -H 'X-Control-Token: light-read-token' http://127.0.0.1:8099/_sim/config
-curl -X POST -H 'X-Control-Token: light-write-token' http://127.0.0.1:8099/_sim/reload
+python scripts/http_smoke.py --system-config examples/light/system.json --base-url http://127.0.0.1:8099
+python scripts/tail_logs.py --system-config examples/light/system.json --lines 20
 ```
 
+### Вариант 2. Подготовить отдельный workspace
 
-Полезные команды:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+python scripts/install_profile.py --profile light --workspace .sim-workspaces/light --overwrite
+python scripts/validate_config.py --system-config .sim-workspaces/light/config/system.json
+python scripts/run_profile.py --system-config .sim-workspaces/light/config/system.json
+```
+
+Во втором терминале:
+
+```bash
+python scripts/http_smoke.py --system-config .sim-workspaces/light/config/system.json --base-url http://127.0.0.1:8099
+python scripts/tail_logs.py --system-config .sim-workspaces/light/config/system.json --lines 20
+```
+
+## Make targets
 
 ```bash
 make validate-light
 make validate-medium
 make validate-heavy
-make schemas
-make test
+make install-light
+make install-medium
 make run-light
+make run-medium
+make test
 ```
 
-## Что смотреть дальше
+## Документация
 
-- [docs/patches/patch-01.md](docs/patches/patch-01.md)
+### Установка и первый запуск
 - [docs/install/system-install.md](docs/install/system-install.md)
 - [docs/install/system-setup.md](docs/install/system-setup.md)
-- [docs/quickstart/light-smoke.md](docs/quickstart/light-smoke.md)
+- [docs/quickstart/light-e2e.md](docs/quickstart/light-e2e.md)
+- [docs/quickstart/medium-e2e.md](docs/quickstart/medium-e2e.md)
+
+### Конфиги и схемы
 - [docs/config/system.md](docs/config/system.md)
 - [docs/config/merchant.md](docs/config/merchant.md)
 - [docs/config/trader.md](docs/config/trader.md)
-- [docs/testing/profile-catalog.md](docs/testing/profile-catalog.md)
-- [docs/testing/run-tests.md](docs/testing/run-tests.md)
+- [schemas/system.schema.json](schemas/system.schema.json)
+- [schemas/merchant.schema.json](schemas/merchant.schema.json)
+- [schemas/trader.schema.json](schemas/trader.schema.json)
 
-
-## Patch 02 status
-
-Merchant runner core is implemented. See `docs/patches/patch-02.md` and `docs/quickstart/merchant-light.md`.
-
-
-## Patch 03 status
-
-Merchant advanced flows are implemented: polling, post actions, receipt uploads. See `docs/patches/patch-03.md` and `docs/scenarios/merchant-post-actions.md`.
-
-- [docs/patches/patch-04.md](docs/patches/patch-04.md)
+### Сценарии
+- [docs/quickstart/merchant-light.md](docs/quickstart/merchant-light.md)
 - [docs/quickstart/trader-light.md](docs/quickstart/trader-light.md)
+- [docs/scenarios/merchant-post-actions.md](docs/scenarios/merchant-post-actions.md)
 - [docs/scenarios/trader-basic.md](docs/scenarios/trader-basic.md)
-- [docs/patches/patch-05.md](docs/patches/patch-05.md)
 - [docs/scenarios/trader-callbacks.md](docs/scenarios/trader-callbacks.md)
 - [docs/scenarios/no-requisites-timeout-error.md](docs/scenarios/no-requisites-timeout-error.md)
+
+### Эксплуатация и тестирование
+- [docs/operations/logs-and-reload.md](docs/operations/logs-and-reload.md)
+- [docs/operations/troubleshooting.md](docs/operations/troubleshooting.md)
+- [docs/testing/profile-catalog.md](docs/testing/profile-catalog.md)
+- [docs/testing/strategy.md](docs/testing/strategy.md)
+- [docs/testing/run-tests.md](docs/testing/run-tests.md)
+
+### История патчей
+- [docs/patches/patch-01.md](docs/patches/patch-01.md)
+- [docs/patches/patch-02.md](docs/patches/patch-02.md)
+- [docs/patches/patch-03.md](docs/patches/patch-03.md)
+- [docs/patches/patch-04.md](docs/patches/patch-04.md)
+- [docs/patches/patch-05.md](docs/patches/patch-05.md)
+- [docs/patches/patch-06.md](docs/patches/patch-06.md)
+
+## Важные ограничения
+
+- сервис **не копирует** подбор реквизитов из `platform_rich-dev`, а тестирует реальную dev-платформу как внешний мир;
+- merchant-side сценарии требуют доступной dev-платформы или test stub-а;
+- `callback_url` для merchant H2H в текущем проекте должен быть `https`;
+- `payment_gateway` и `currency` в merchant create-order взаимоисключающие;
+- `finish` оставлен как dev-only сценарий.
