@@ -202,3 +202,50 @@ def test_hot_reload_recreates_completed_job_with_same_id(copied_light_profile: P
     assert len(create_calls) == 2
     assert create_calls[-1]['body']['amount'] == 7777
     assert create_calls[-1]['body']['external_id'] == 'reloaded-2'
+
+
+def test_hot_reload_recreate_active_job_keeps_runtime_job_active(copied_light_profile: Path) -> None:
+    merchant_path = copied_light_profile.parent / 'merchant.json'
+    data = json.loads(merchant_path.read_text(encoding='utf-8'))
+    data['merchant_jobs'][0]['schedule']['start_delay_sec'] = 0
+    data['merchant_jobs'][0]['schedule']['interval_sec'] = 30
+    data['merchant_jobs'][0]['schedule']['requests_total'] = 5
+    data['defaults']['poll_after_create']['delay_ms'] = 10
+    data['defaults']['poll_after_create']['attempts'] = 1
+    data['defaults']['poll_after_create']['interval_ms'] = 10
+    merchant_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+    platform = RecordingPlatform()
+    app = create_app(copied_light_profile, merchant_transport_factory=platform.transport_factory)
+
+    with TestClient(app) as client:
+        _wait_until(
+            lambda: client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()['merchant_runtime'][
+                'orders_total'
+            ]
+            == 1
+        )
+
+        reloaded = json.loads(merchant_path.read_text(encoding='utf-8'))
+        reloaded['request_templates'][0]['request']['amount'] = 9100
+        merchant_path.write_text(json.dumps(reloaded, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+        time.sleep(0.05)
+
+        reload_response = client.post('/_sim/reload', headers={'X-Control-Token': 'light-write-token'})
+        assert reload_response.status_code == 200
+        assert reload_response.json()['status'] == 'ok'
+
+        _wait_until(
+            lambda: client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()['merchant_runtime'][
+                'jobs'
+            ]['merchant_light_job']['active']
+            is True
+            and client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()['merchant_runtime'][
+                'jobs'
+            ]['merchant_light_job']['finished_at']
+            is None
+        )
+        state = client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()
+        job = state['merchant_runtime']['jobs']['merchant_light_job']
+        assert job['active'] is True
+        assert job['finished_at'] is None

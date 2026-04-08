@@ -108,7 +108,7 @@ class MerchantRunner:
             if current_task is not None and not current_task.done() and current_spec == desired_spec:
                 continue
             if current_task is not None:
-                await self._cancel_job(job.id)
+                await self._cancel_job(job.id, mark_finished=False)
                 recreated_jobs.append(job.id)
             task = asyncio.create_task(self._job_loop(bundle, job, merchant, template), name=f'merchant-job:{job.id}')
             self._register_job_task(job.id, desired_spec, task)
@@ -578,7 +578,7 @@ class MerchantRunner:
         )
         return response_payload
 
-    async def _cancel_job(self, job_id: str) -> None:
+    async def _cancel_job(self, job_id: str, *, mark_finished: bool = True) -> None:
         task = self._job_tasks.pop(job_id, None)
         self._job_specs.pop(job_id, None)
         if task is None:
@@ -586,7 +586,8 @@ class MerchantRunner:
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
-        await self.state.mark_job_finished(job_id)
+        if mark_finished:
+            await self.state.mark_job_finished(job_id)
 
     def _prune_completed_job_tasks(self) -> None:
         for job_id, task in list(self._job_tasks.items()):
