@@ -6,6 +6,8 @@
 make validate-light
 make validate-medium
 make validate-heavy
+make validate-heavy-shared
+make validate-heavy-dedicated
 ```
 
 Или точечно:
@@ -14,6 +16,8 @@ make validate-heavy
 python scripts/validate_config.py --system-config examples/light/system.json
 python scripts/validate_config.py --system-config examples/medium/system.json
 python scripts/validate_config.py --system-config examples/heavy/system.json
+python scripts/validate_config.py --system-config examples/heavy/shared-dev/system.json
+python scripts/validate_config.py --system-config examples/heavy/dedicated/system.json
 ```
 
 ## 2. Подготовка workspace-профилей
@@ -21,6 +25,8 @@ python scripts/validate_config.py --system-config examples/heavy/system.json
 ```bash
 make install-light
 make install-medium
+make install-heavy-shared
+make install-heavy-dedicated
 ```
 
 ## 3. Smoke-запуск вручную
@@ -70,10 +76,10 @@ pytest tests/test_merchant_runner_core.py tests/test_merchant_post_actions.py
 pytest tests/test_trader_runner_core.py tests/test_trader_advanced_behaviors.py
 ```
 
-### Patch 06 devtools и profile smoke
+### Devtools, heavy profiles и profile smoke
 
 ```bash
-pytest tests/test_devtools_scripts.py tests/test_examples_e2e_smoke.py
+pytest tests/test_devtools_scripts.py tests/test_examples_e2e_smoke.py tests/test_config_validation.py
 ```
 
 ## 7. Что считается минимумом перед merge
@@ -86,4 +92,10 @@ make validate-medium
 pytest
 ```
 
-Если менялись только docs/helper scripts, всё равно полезно прогнать хотя бы profile smoke tests.
+Если менялись heavy-профили, safety block или helper scripts, дополнительно полезно прогнать:
+
+```bash
+make validate-heavy-shared
+make validate-heavy-dedicated
+pytest tests/test_devtools_scripts.py tests/test_config_validation.py
+```

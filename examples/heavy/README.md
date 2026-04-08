@@ -1,23 +1,11 @@
-# Heavy profile
+# Heavy profiles
 
-Профиль для серьёзных прогонов и stress-like сценариев.
+Каталог `examples/heavy/` теперь содержит два варианта:
 
-## Важно
+- `heavy/shared-dev` — консервативный heavy для общего dev-стенда;
+- `heavy/dedicated` — агрессивный профиль для выделенного стенда;
+- `heavy` — обратносуместимый alias shared-dev.
 
-Этот профиль не рекомендуется включать бездумно на shared dev. Сначала уменьши расписания, `requests_total` и `max_inflight`, если запускаешь не на выделенном стенде.
-
-## Базовый старт
-
-```bash
-python scripts/install_profile.py --profile heavy --workspace .sim-workspaces/heavy --overwrite
-python scripts/validate_config.py --system-config .sim-workspaces/heavy/config/system.json
-```
-
-Перед запуском внимательно проверь:
-- `merchant_jobs[].schedule`
-- `platform.base_url`
-- `traders[].response profiles`
-- доступность `public_base_url`
-
-Подробнее про выбор профиля:
-- [docs/testing/profile-catalog.md](../../docs/testing/profile-catalog.md)
+Рекомендуемый выбор:
+- shared dev: `heavy/shared-dev`;
+- выделенный стенд: `heavy/dedicated`.

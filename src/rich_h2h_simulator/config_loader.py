@@ -10,7 +10,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from rich_h2h_simulator.config_validation import validate_bundle
+from rich_h2h_simulator.config_validation import summarize_safety, validate_bundle
 from rich_h2h_simulator.exceptions import ConfigError
 from rich_h2h_simulator.models.bundle import ConfigBundle
 from rich_h2h_simulator.models.merchant import MerchantConfig
@@ -104,6 +104,7 @@ class ConfigManager:
                 'response_profiles': len(bundle.trader.response_profiles),
                 'traders': len(bundle.trader.traders),
             },
+            'safety': summarize_safety(bundle),
         }
 
     def _apply(self, bundle: ConfigBundle) -> None:

@@ -6,13 +6,14 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
-from rich_h2h_simulator.devtools import prepare_profile_workspace
+from rich_h2h_simulator.devtools import list_available_profiles, prepare_profile_workspace
 from rich_h2h_simulator.exceptions import ConfigError
 
 
 def main() -> None:
+    available_profiles = ', '.join(list_available_profiles())
     parser = argparse.ArgumentParser(description='Prepare a self-contained simulator workspace from examples/<profile>.')
-    parser.add_argument('--profile', required=True, choices=['light', 'medium', 'heavy'])
+    parser.add_argument('--profile', required=True, help=f'Profile name. Available: {available_profiles}')
     parser.add_argument('--workspace', required=True, help='Target directory for config/logs/fixtures workspace')
     parser.add_argument('--overwrite', action='store_true', help='Recreate workspace if it already exists')
     parser.add_argument('--no-copy-fixtures', action='store_true', help='Create empty fixtures directory instead of copying repo fixtures')

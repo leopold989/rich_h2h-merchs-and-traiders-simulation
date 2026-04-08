@@ -42,7 +42,7 @@ def create_app(
 
     app = FastAPI(
         title='Rich H2H Simulator',
-        version='0.6.0',
+        version='0.7.0',
         docs_url='/docs',
         redoc_url='/redoc',
         lifespan=lifespan,

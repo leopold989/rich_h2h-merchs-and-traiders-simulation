@@ -120,3 +120,53 @@ def test_trader_round_robin_selection(copied_medium_profile: Path) -> None:
         second_detail = second.json()['data']['payment_detail']['detail']
         assert {first_detail, second_detail} == {'+79990001122', '+79990003344'}
         assert first_detail != second_detail
+
+
+def test_trader_defaults_validate_merchant_id_can_disable_check(copied_light_profile: Path) -> None:
+    trader_path = copied_light_profile.parent / 'trader.json'
+    data = _load_json(trader_path)
+    data['defaults']['validate_merchant_id'] = False
+    _write_json(trader_path, data)
+
+    app = create_app(copied_light_profile)
+    with TestClient(app) as client:
+        headers = {'Access-Token': 'trader-light-token'}
+        create = client.post(
+            '/traders/trader_light/api/h2h/order',
+            headers=headers,
+            json={
+                'external_id': 'merchant-id-default-disabled',
+                'amount': 5000,
+                'merchant_id': '11111111-1111-1111-1111-111111111111',
+                'payment_gateway': 'sbp_rub',
+                'payment_detail_type': 'phone',
+                'transgran': False,
+            },
+        )
+        assert create.status_code == 200
+        order_id = create.json()['data']['order_id']
+
+        by_external = client.get(
+            '/traders/trader_light/api/h2h/order/11111111-1111-1111-1111-111111111111/merchant-id-default-disabled',
+            headers=headers,
+        )
+        assert by_external.status_code == 200
+        assert by_external.json()['data']['order_id'] == order_id
+
+
+def test_trader_invalid_amount_returns_422_not_500(copied_light_profile: Path) -> None:
+    app = create_app(copied_light_profile)
+    with TestClient(app) as client:
+        response = client.post(
+            '/traders/trader_light/api/h2h/order',
+            headers={'Access-Token': 'trader-light-token'},
+            json={
+                'external_id': 'bad-amount-001',
+                'amount': 'abc',
+                'merchant_id': 'c0a0c1fd-37ad-4c9e-8a48-7b4c90c1f111',
+                'payment_gateway': 'sbp_rub',
+                'payment_detail_type': 'phone',
+            },
+        )
+        assert response.status_code == 422
+        assert 'amount' in response.json()['message']

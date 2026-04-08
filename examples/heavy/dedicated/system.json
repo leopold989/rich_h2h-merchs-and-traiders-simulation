@@ -3,7 +3,7 @@
   "service": {
     "name": "rich-h2h-simulator",
     "listen_host": "0.0.0.0",
-    "listen_port": 8099,
+    "listen_port": 8109,
     "public_base_url": "https://sim.dev.rich.local",
     "timezone": "Europe/Warsaw",
     "config_reload_interval_sec": 3
@@ -17,8 +17,8 @@
   "paths": {
     "merchant_config": "./merchant.json",
     "trader_config": "./trader.json",
-    "fixtures_dir": "../../fixtures",
-    "log_dir": "../../logs"
+    "fixtures_dir": "../../../fixtures",
+    "log_dir": "../../../logs"
   },
   "runtime": {
     "state_backend": "memory",
@@ -34,8 +34,8 @@
     "format": "jsonl",
     "rotation": {
       "when": "midnight",
-      "backup_count": 14,
-      "max_bytes": 0
+      "backup_count": 21,
+      "max_bytes": 20000000
     },
     "channels": {
       "system": "system.log",
@@ -54,14 +54,14 @@
   "control_api": {
     "enabled": true,
     "prefix": "/_sim",
-    "read_only_token": "heavy-read-token",
-    "write_token": "heavy-write-token"
+    "read_only_token": "heavy-dedicated-read-token",
+    "write_token": "heavy-dedicated-write-token"
   },
   "safety": {
     "enabled": true,
-    "mode": "shared_dev",
-    "max_active_jobs": 6,
-    "max_total_inflight": 16,
-    "max_requests_per_minute_estimate": 60
+    "mode": "dedicated",
+    "max_active_jobs": 16,
+    "max_total_inflight": 80,
+    "max_requests_per_minute_estimate": 360
   }
 }

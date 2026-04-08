@@ -17,8 +17,8 @@
   "paths": {
     "merchant_config": "./merchant.json",
     "trader_config": "./trader.json",
-    "fixtures_dir": "../../fixtures",
-    "log_dir": "../../logs"
+    "fixtures_dir": "../../../fixtures",
+    "log_dir": "../../../logs"
   },
   "runtime": {
     "state_backend": "memory",

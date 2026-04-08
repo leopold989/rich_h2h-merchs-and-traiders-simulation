@@ -15,7 +15,7 @@ from rich_h2h_simulator.exceptions import ConfigError, SimulatorError
 from rich_h2h_simulator.models.bundle import ConfigBundle
 from rich_h2h_simulator.models.trader import RequisiteConfig, RoutingRuleConfig, TraderConfigEntry
 
-PROFILE_NAMES = ('light', 'medium', 'heavy')
+WORKSPACE_MARKER = '.rich-h2h-simulator-workspace'
 
 
 class SmokeCheckError(SimulatorError):
@@ -58,15 +58,27 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def resolve_profile_dir(profile: str, *, root: Path | None = None) -> Path:
-    if profile not in PROFILE_NAMES:
-        allowed = ', '.join(PROFILE_NAMES)
-        raise ConfigError(f'Unknown profile: {profile}. Expected one of: {allowed}')
+def list_available_profiles(*, root: Path | None = None) -> tuple[str, ...]:
     base_root = (root or project_root()).resolve()
-    profile_dir = base_root / 'examples' / profile
-    if not profile_dir.exists():
-        raise ConfigError(f'Profile directory does not exist: {profile_dir}')
-    return profile_dir
+    examples_root = base_root / 'examples'
+    profiles: list[str] = []
+    if not examples_root.exists():
+        return tuple()
+    for system_path in sorted(examples_root.rglob('system.json')):
+        profile_dir = system_path.parent
+        if (profile_dir / 'merchant.json').exists() and (profile_dir / 'trader.json').exists():
+            profiles.append(profile_dir.relative_to(examples_root).as_posix())
+    return tuple(dict.fromkeys(profiles))
+
+
+def resolve_profile_dir(profile: str, *, root: Path | None = None) -> Path:
+    base_root = (root or project_root()).resolve()
+    profile_dir = (base_root / 'examples' / Path(profile)).resolve()
+    if _is_profile_dir(profile_dir, base_root=base_root):
+        return profile_dir
+    available = list_available_profiles(root=base_root)
+    allowed = ', '.join(available) if available else '<none>'
+    raise ConfigError(f'Unknown profile: {profile}. Expected one of: {allowed}')
 
 
 def resolve_system_config(
@@ -106,7 +118,8 @@ def prepare_profile_workspace(
             f'Workspace is not empty: {workspace_dir}. Use --overwrite or choose another path.'
         )
 
-    if overwrite and workspace_dir.exists():
+    if overwrite and workspace_dir.exists() and any(workspace_dir.iterdir()):
+        _ensure_safe_workspace_overwrite(repo_root, workspace_dir)
         shutil.rmtree(workspace_dir)
 
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -126,6 +139,7 @@ def prepare_profile_workspace(
     system['paths']['fixtures_dir'] = '../fixtures'
     system['paths']['log_dir'] = '../logs'
     system_path.write_text(json.dumps(system, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+    _write_workspace_marker(workspace_dir, profile=profile)
 
     return PreparedWorkspace(
         profile=profile,
@@ -339,30 +353,32 @@ def _pick_smoke_rule(trader: TraderConfigEntry) -> RoutingRuleConfig:
 
 
 def _pick_smoke_requisite(trader: TraderConfigEntry, rule: RoutingRuleConfig) -> RequisiteConfig:
+    pool = {item.id: item for item in trader.requisites if item.active}
     if rule.requisite_pool:
-        pool = {item.id: item for item in trader.requisites if item.active}
         for requisite_id in rule.requisite_pool:
             requisite = pool.get(requisite_id)
-            if requisite is not None:
+            if requisite is not None and _requisite_can_satisfy_rule(rule, requisite):
                 return requisite
+        raise SmokeCheckError(
+            f'Trader {trader.alias} does not have an active requisite in pool {rule.requisite_pool} that satisfies rule {rule.id}'
+        )
     for requisite in trader.requisites:
-        if requisite.active:
+        if requisite.active and _requisite_can_satisfy_rule(rule, requisite):
             return requisite
-    raise SmokeCheckError(f'Trader {trader.alias} does not have an active requisite')
+    raise SmokeCheckError(f'Trader {trader.alias} does not have an active requisite compatible with rule {rule.id}')
 
 
 def _pick_amount(rule: RoutingRuleConfig, requisite: RequisiteConfig) -> int:
-    amount = rule.match.amount
-    if amount is not None:
-        lower = amount.gte if amount.gte is not None else amount.gt + 1 if amount.gt is not None else None
-        upper = amount.lte if amount.lte is not None else amount.lt - 1 if amount.lt is not None else None
-        if lower is not None and upper is not None:
-            return max(lower, min(upper, (lower + upper) // 2))
-        if lower is not None:
-            return lower
-        if upper is not None:
-            return upper
-    return max(requisite.amount_range.min, min(requisite.amount_range.max, requisite.amount_range.min + 1000))
+    lower, upper = _rule_amount_bounds(rule)
+    effective_lower = requisite.amount_range.min if lower is None else max(lower, requisite.amount_range.min)
+    effective_upper = requisite.amount_range.max if upper is None else min(upper, requisite.amount_range.max)
+    if effective_lower > effective_upper:
+        raise SmokeCheckError(
+            f'Rule {rule.id} and requisite {requisite.id} do not have an overlapping amount range for smoke request'
+        )
+    if effective_lower == effective_upper:
+        return effective_lower
+    return max(effective_lower, min(effective_upper, (effective_lower + effective_upper) // 2))
 
 
 def _pick_transgran(rule: RoutingRuleConfig, requisite: RequisiteConfig) -> bool | None:
@@ -371,6 +387,62 @@ def _pick_transgran(rule: RoutingRuleConfig, requisite: RequisiteConfig) -> bool
     if rule.match.is_transgran is not None:
         return rule.match.is_transgran
     return requisite.is_transgran
+
+
+def _rule_amount_bounds(rule: RoutingRuleConfig) -> tuple[int | None, int | None]:
+    amount = rule.match.amount
+    if amount is None:
+        return None, None
+    lower = amount.gte if amount.gte is not None else amount.gt + 1 if amount.gt is not None else None
+    upper = amount.lte if amount.lte is not None else amount.lt - 1 if amount.lt is not None else None
+    return lower, upper
+
+
+def _requisite_can_satisfy_rule(rule: RoutingRuleConfig, requisite: RequisiteConfig) -> bool:
+    match = rule.match
+    if match.payment_gateway is not None and requisite.payment_gateway != match.payment_gateway:
+        return False
+    if match.payment_detail_type is not None and requisite.detail_type != match.payment_detail_type:
+        return False
+    required_transgran = _pick_transgran(rule, requisite)
+    if required_transgran is not None and requisite.is_transgran != required_transgran:
+        return False
+    lower, upper = _rule_amount_bounds(rule)
+    effective_lower = requisite.amount_range.min if lower is None else max(lower, requisite.amount_range.min)
+    effective_upper = requisite.amount_range.max if upper is None else min(upper, requisite.amount_range.max)
+    return effective_lower <= effective_upper
+
+
+def _is_profile_dir(profile_dir: Path, *, base_root: Path) -> bool:
+    try:
+        profile_dir.relative_to((base_root / 'examples').resolve())
+    except ValueError:
+        return False
+    return (profile_dir / 'system.json').exists() and (profile_dir / 'merchant.json').exists() and (profile_dir / 'trader.json').exists()
+
+
+def _write_workspace_marker(workspace_dir: Path, *, profile: str) -> None:
+    marker_path = workspace_dir / WORKSPACE_MARKER
+    payload = {
+        'profile': profile,
+        'prepared_at': time.time(),
+    }
+    marker_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+
+def _ensure_safe_workspace_overwrite(repo_root: Path, workspace_dir: Path) -> None:
+    workspace_dir = workspace_dir.resolve()
+    repo_root = repo_root.resolve()
+    if workspace_dir == workspace_dir.parent:
+        raise ConfigError(f'Refusing to overwrite filesystem root: {workspace_dir}')
+    if workspace_dir == repo_root:
+        raise ConfigError(f'Refusing to overwrite project root: {workspace_dir}')
+    marker_path = workspace_dir / WORKSPACE_MARKER
+    if not marker_path.exists():
+        raise ConfigError(
+            'Refusing to overwrite a directory that was not prepared by this helper. '
+            f'Missing marker file: {marker_path}'
+        )
 
 
 def _resolve(base: Path, raw: str) -> Path:

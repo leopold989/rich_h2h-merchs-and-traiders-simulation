@@ -155,3 +155,35 @@ def test_post_action_is_skipped_when_status_condition_does_not_match(copied_ligh
 
     action_requests = [item for item in platform.requests if item['path'] == platform.expected_path]
     assert action_requests == []
+
+
+def test_receipt_build_failure_marks_action_failed(copied_light_profile: Path) -> None:
+    _prepare_profile(copied_light_profile, 'add_receipt')
+    merchant_path = copied_light_profile.parent / 'merchant.json'
+    data = json.loads(merchant_path.read_text(encoding='utf-8'))
+    data['request_templates'][0]['post_actions'][0]['receipt'] = {
+        'kind': 'url',
+        'url': 'http://127.0.0.1:9/missing-receipt.png',
+    }
+    merchant_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+    platform = ActionPlatform('add_receipt')
+    app = create_app(copied_light_profile, merchant_transport_factory=platform.transport_factory)
+
+    with TestClient(app) as client:
+        _wait_until(
+            lambda: client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()['merchant_runtime'][
+                'orders_recent'
+            ]
+            and client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()['merchant_runtime'][
+                'orders_recent'
+            ][0]['actions']['add_receipt_action']['status']
+            == 'failed'
+        )
+        state = client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()
+        action_state = state['merchant_runtime']['orders_recent'][0]['actions']['add_receipt_action']
+        assert action_state['status'] == 'failed'
+        assert 'connection' in action_state['error'].lower() or 'attempts failed' in action_state['error'].lower()
+
+    action_requests = [item for item in platform.requests if item['path'] == platform.expected_path]
+    assert action_requests == []

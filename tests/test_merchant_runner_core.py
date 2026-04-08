@@ -159,3 +159,46 @@ def test_merchant_callback_receiver_rejects_bad_token(copied_light_profile: Path
             json={'order_id': 'missing-order'},
         )
         assert response.status_code == 403
+
+
+def test_hot_reload_recreates_completed_job_with_same_id(copied_light_profile: Path) -> None:
+    _rewrite_light_schedule(copied_light_profile)
+    platform = RecordingPlatform()
+    app = create_app(copied_light_profile, merchant_transport_factory=platform.transport_factory)
+
+    with TestClient(app) as client:
+        _wait_until(
+            lambda: client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()['merchant_runtime'][
+                'orders_total'
+            ]
+            == 1
+        )
+
+        merchant_path = copied_light_profile.parent / 'merchant.json'
+        data = json.loads(merchant_path.read_text(encoding='utf-8'))
+        data['request_templates'][0]['request']['amount'] = 7777
+        data['merchant_jobs'][0]['schedule']['start_delay_sec'] = 0
+        data['merchant_jobs'][0]['schedule']['interval_sec'] = 1
+        data['merchant_jobs'][0]['schedule']['requests_total'] = 1
+        data['merchant_jobs'][0]['external_id']['pattern'] = 'reloaded-{seq}'
+        merchant_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+        time.sleep(0.05)
+
+        reload_response = client.post('/_sim/reload', headers={'X-Control-Token': 'light-write-token'})
+        assert reload_response.status_code == 200
+        assert reload_response.json()['status'] == 'ok'
+
+        _wait_until(
+            lambda: client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()['merchant_runtime'][
+                'orders_total'
+            ]
+            == 2
+        )
+        state = client.get('/_sim/state', headers={'X-Control-Token': 'light-read-token'}).json()
+        external_ids = {order['external_id'] for order in state['merchant_runtime']['orders_recent']}
+        assert 'reloaded-2' in external_ids
+
+    create_calls = [item for item in platform.requests if item['method'] == 'POST' and item['path'].endswith('/api/h2h/order')]
+    assert len(create_calls) == 2
+    assert create_calls[-1]['body']['amount'] == 7777
+    assert create_calls[-1]['body']['external_id'] == 'reloaded-2'

@@ -271,6 +271,45 @@
       "title": "RuntimeConfig",
       "type": "object"
     },
+    "SafetyConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "mode": {
+          "default": "shared_dev",
+          "enum": [
+            "shared_dev",
+            "dedicated"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "max_active_jobs": {
+          "default": 10,
+          "exclusiveMinimum": 0,
+          "title": "Max Active Jobs",
+          "type": "integer"
+        },
+        "max_total_inflight": {
+          "default": 20,
+          "exclusiveMinimum": 0,
+          "title": "Max Total Inflight",
+          "type": "integer"
+        },
+        "max_requests_per_minute_estimate": {
+          "default": 300,
+          "exclusiveMinimum": 0,
+          "title": "Max Requests Per Minute Estimate",
+          "type": "integer"
+        }
+      },
+      "title": "SafetyConfig",
+      "type": "object"
+    },
     "ServiceConfig": {
       "additionalProperties": false,
       "properties": {
@@ -337,6 +376,9 @@
     },
     "runtime": {
       "$ref": "#/$defs/RuntimeConfig"
+    },
+    "safety": {
+      "$ref": "#/$defs/SafetyConfig"
     },
     "logging": {
       "$ref": "#/$defs/LoggingConfig"
