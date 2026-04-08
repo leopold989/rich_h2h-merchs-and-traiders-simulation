@@ -39,41 +39,67 @@
 - несколько request templates;
 - несколько merchants;
 - несколько traders;
-- `instant_success`, `delayed_success_callback`, `no_requisites`, `hard_timeout`, `http_500`;
+- `instant_success`, `delayed_success_callback`, `no_requisites`, `hard_timeout`, `http_error`;
 - success/cancel/dispute/receipt сценарии.
 
 Когда использовать:
 - надо воспроизвести типовую dev-ситуацию;
 - надо проверить доработку подбора реквизитов;
-- нужен "боевой" профиль без жёсткой нагрузки.
+- нужен «боевой» профиль без жёсткой нагрузки.
 
 Стартовый мануал:
 - [docs/quickstart/medium-e2e.md](../quickstart/medium-e2e.md)
 
-## Heavy
+## Heavy compatibility alias
 
 Каталог: `examples/heavy/`
 
+Это обратносуместимый alias консервативного heavy-профиля. Для новых запусков лучше использовать явный вариант `heavy/shared-dev`.
+
+## Heavy / shared-dev
+
+Каталог: `examples/heavy/shared-dev/`
+
 Назначение:
-- подготовка к серьёзным прогонам;
-- stress-like конфигурация;
-- шаблон для дальнейших нагрузочных профилей.
+- серьёзная регрессия на общем dev-стенде;
+- stress-like прогоны без явной перегрузки shared dev;
+- проверка устойчивости логики и логирования на заметном потоке событий.
 
 Что внутри:
 - несколько merchants;
-- несколько jobs с высокой частотой;
+- burst-like jobs, но в рамках safety limits;
 - несколько traders и response profiles;
-- unstable сценарии и burst-like нагрузка.
+- `safety.enabled=true`, `mode=shared_dev`.
 
 Когда использовать:
-- только на выделенном dev-стенде или после осознанного снижения интенсивности;
-- когда нужно проверить устойчивость логики и логирование на большом числе событий.
+- нужен профиль тяжелее `medium`, но стенд общий;
+- нужно воспроизвести редкие цепочки callback/error без экстремальной интенсивности.
 
-Важно:
-- heavy профиль **не рекомендуется** включать на shared dev без ревью интервалов и `requests_total`.
+## Heavy / dedicated
+
+Каталог: `examples/heavy/dedicated/`
+
+Назначение:
+- нагрузочные прогоны на выделенном стенде;
+- агрессивные merchant jobs;
+- проверка логики и логов на высоком числе событий.
+
+Что внутри:
+- больше merchants и jobs;
+- выше `max_inflight`;
+- дополнительный round-robin trader;
+- `safety.enabled=true`, `mode=dedicated` с повышенными лимитами.
+
+Когда использовать:
+- только на изолированном стенде;
+- когда нужно проверить поведение под существенной нагрузкой и bursts.
 
 ## Практическая рекомендация
 
 - **Light** — первый запуск и smoke.
 - **Medium** — ежедневная работа команды.
-- **Heavy** — только осознанные серьёзные прогоны.
+- **Heavy / shared-dev** — серьёзная прогонка на общем стенде.
+- **Heavy / dedicated** — агрессивные тесты только на выделенном окружении.
+
+Подробный пошаговый разбор heavy-профилей:
+- [docs/testing/heavy-profiles.md](heavy-profiles.md)

@@ -48,6 +48,14 @@ class RuntimeConfig(StrictBaseModel):
         return self
 
 
+class SafetyConfig(StrictBaseModel):
+    enabled: bool = False
+    mode: Literal['shared_dev', 'dedicated'] = 'shared_dev'
+    max_active_jobs: int = Field(default=10, gt=0)
+    max_total_inflight: int = Field(default=20, gt=0)
+    max_requests_per_minute_estimate: int = Field(default=300, gt=0)
+
+
 class LoggingChannels(StrictBaseModel):
     system: str = 'system.log'
     merchant_outbound: str = 'merchant_outbound.log'
@@ -83,5 +91,6 @@ class SystemConfig(StrictBaseModel):
     platform: PlatformConfig
     paths: PathsConfig
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
+    safety: SafetyConfig = Field(default_factory=SafetyConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     control_api: ControlApiConfig

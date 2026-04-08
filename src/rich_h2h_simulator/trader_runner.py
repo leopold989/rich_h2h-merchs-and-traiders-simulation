@@ -43,6 +43,7 @@ _OPERATION_PROFILE_ATTR = {
     'open_dispute': 'open_dispute',
 }
 
+
 @dataclass(slots=True, frozen=True)
 class ResolvedTrader:
     defaults: TraderDefaultsConfig
@@ -357,7 +358,7 @@ class TraderRunner:
             return error
 
         merchant_id = str(payload['merchant_id'])
-        if resolved.trader.auth.validate_merchant_id and merchant_id != str(resolved.trader.auth.merchant_id):
+        if self._should_validate_merchant_id(resolved) and merchant_id != str(resolved.trader.auth.merchant_id):
             return TraderHttpResult(status_code=403, body={'success': False, 'message': 'invalid merchant_id'})
 
         external_id = str(payload['external_id'])
@@ -368,7 +369,7 @@ class TraderRunner:
             self._log_response(path, resolved.trader.alias, existing.create_status_code, existing.create_response_body)
             return TraderHttpResult(status_code=existing.create_status_code, body=existing.create_response_body)
 
-        amount = int(payload['amount'])
+        amount = self._coerce_amount(payload['amount'])
         payment_gateway = _optional_str(payload.get('payment_gateway'))
         currency = _optional_str(payload.get('currency'))
         payment_detail_type = _optional_str(payload.get('payment_detail_type'))
@@ -377,7 +378,10 @@ class TraderRunner:
 
         matched_rule = self._match_rule(resolved, payload)
         profile_id = matched_rule.response_profile_id if matched_rule else resolved.trader.default_response_profile_id
-        profile = resolved.response_profiles[profile_id]
+        profile = self._resolve_response_profile(resolved, profile_id)
+        if isinstance(profile, TraderHttpResult):
+            self._log_response(path, resolved.trader.alias, profile.status_code, profile.body)
+            return profile
         behavior = profile.create_order
         stats = self._stats_by_alias[resolved.trader.alias]
         stats.create_total += 1
@@ -565,7 +569,7 @@ class TraderRunner:
         auth_error = self._authorize(resolved, headers)
         if auth_error is not None:
             return auth_error
-        if resolved.trader.auth.validate_merchant_id and merchant_id != str(resolved.trader.auth.merchant_id):
+        if self._should_validate_merchant_id(resolved) and merchant_id != str(resolved.trader.auth.merchant_id):
             return TraderHttpResult(status_code=403, body={'success': False, 'message': 'invalid merchant_id'})
         order_id = self._orders_by_external.get((resolved.trader.alias, merchant_id, external_id))
         if order_id is None:
@@ -590,7 +594,10 @@ class TraderRunner:
         record = self._orders_by_id.get(order_id)
         if record is None or record.trader_alias != resolved.trader.alias:
             return TraderHttpResult(status_code=404, body={'success': False, 'message': 'order not found'})
-        profile = resolved.response_profiles[record.response_profile_id]
+        profile = self._resolve_response_profile(resolved, record.response_profile_id)
+        if isinstance(profile, TraderHttpResult):
+            self._log_response(path, resolved.trader.alias, profile.status_code, profile.body)
+            return profile
         behavior = getattr(profile, _OPERATION_PROFILE_ATTR[operation])
 
         payload: Any = None
@@ -792,6 +799,34 @@ class TraderRunner:
             return TraderHttpResult(status_code=403, body={'success': False, 'message': 'invalid Access-Token'})
         return None
 
+    def _should_validate_merchant_id(self, resolved: ResolvedTrader) -> bool:
+        return resolved.defaults.validate_merchant_id and resolved.trader.auth.validate_merchant_id
+
+    def _resolve_response_profile(
+        self,
+        resolved: ResolvedTrader,
+        profile_id: str,
+    ) -> ResponseProfileConfig | TraderHttpResult:
+        profile = resolved.response_profiles.get(profile_id)
+        if profile is not None:
+            return profile
+        message = f'inactive or unknown response_profile_id={profile_id}'
+        self._stats_by_alias[resolved.trader.alias].last_error = message
+        log_event(
+            self.logger_registry.get('system'),
+            'trader_missing_response_profile',
+            {'trader_alias': resolved.trader.alias, 'response_profile_id': profile_id},
+        )
+        return TraderHttpResult(status_code=503, body={'success': False, 'message': message})
+
+    def _coerce_amount(self, raw_amount: Any) -> int:
+        if isinstance(raw_amount, bool):
+            raise ValueError('amount must be integer-like, booleans are not allowed')
+        try:
+            return int(raw_amount)
+        except (TypeError, ValueError) as exc:
+            raise ValueError('amount must be integer-like') from exc
+
     def _validate_create_payload(self, payload: dict[str, Any]) -> TraderHttpResult | None:
         missing = [field for field in ('external_id', 'amount', 'merchant_id') if field not in payload]
         if missing:
@@ -801,6 +836,12 @@ class TraderRunner:
                 status_code=422,
                 body={'success': False, 'message': 'payment_gateway and currency are mutually exclusive'},
             )
+        try:
+            amount = self._coerce_amount(payload.get('amount'))
+        except ValueError as exc:
+            return TraderHttpResult(status_code=422, body={'success': False, 'message': str(exc)})
+        if amount <= 0:
+            return TraderHttpResult(status_code=422, body={'success': False, 'message': 'amount must be greater than 0'})
         return None
 
     async def _read_payload(self, request: Request) -> Any:
@@ -834,7 +875,7 @@ class TraderRunner:
             return False
         if match.payment_detail_type is not None and _optional_str(payload.get('payment_detail_type')) != match.payment_detail_type:
             return False
-        amount = int(payload.get('amount', 0))
+        amount = self._coerce_amount(payload.get('amount', 0))
         if match.amount is not None:
             if match.amount.gte is not None and amount < match.amount.gte:
                 return False

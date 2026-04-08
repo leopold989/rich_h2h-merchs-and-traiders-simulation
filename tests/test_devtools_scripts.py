@@ -3,8 +3,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from rich_h2h_simulator.config_loader import ConfigManager
-from rich_h2h_simulator.devtools import build_trader_smoke_case, prepare_profile_workspace, read_last_lines, resolve_log_paths
+from rich_h2h_simulator.devtools import (
+    build_trader_smoke_case,
+    list_available_profiles,
+    prepare_profile_workspace,
+    read_last_lines,
+    resolve_log_paths,
+)
+from rich_h2h_simulator.exceptions import ConfigError
 
 
 def test_prepare_profile_workspace_creates_self_contained_layout(tmp_path: Path, project_root: Path) -> None:
@@ -53,3 +62,43 @@ def test_build_trader_smoke_case_generates_valid_payload_for_medium(copied_mediu
     assert case['payload']['payment_detail_type'] == 'phone'
     assert case['payload']['amount'] >= 1000
     assert 'external_id' in case['payload']
+
+
+def test_prepare_profile_workspace_refuses_overwrite_without_marker(tmp_path: Path, project_root: Path) -> None:
+    dangerous = tmp_path / 'not-a-workspace'
+    dangerous.mkdir()
+    (dangerous / 'keep.txt').write_text('do not delete', encoding='utf-8')
+
+    with pytest.raises(ConfigError, match='Refusing to overwrite'):
+        prepare_profile_workspace(profile='light', workspace=dangerous, root=project_root, overwrite=True)
+
+    assert (dangerous / 'keep.txt').read_text(encoding='utf-8') == 'do not delete'
+
+
+def test_prepare_profile_workspace_can_overwrite_its_own_marker_workspace(tmp_path: Path, project_root: Path) -> None:
+    workspace = tmp_path / 'workspace-light'
+    prepare_profile_workspace(profile='light', workspace=workspace, root=project_root)
+    (workspace / 'logs' / 'old.log').write_text('old', encoding='utf-8')
+
+    prepared = prepare_profile_workspace(profile='light', workspace=workspace, root=project_root, overwrite=True)
+    assert prepared.system_config_path.exists()
+    assert not (workspace / 'logs' / 'old.log').exists()
+
+
+def test_build_trader_smoke_case_intersects_rule_and_requisite_amount_ranges(copied_medium_profile: Path) -> None:
+    trader_path = copied_medium_profile.parent / 'trader.json'
+    trader = json.loads(trader_path.read_text(encoding='utf-8'))
+    sbp_trader = next(item for item in trader['traders'] if item['alias'] == 'trader_sbp_pool')
+    sbp_rule = next(item for item in sbp_trader['routing_rules'] if item['id'] == 'sbp_phone_low_amount')
+    sbp_rule['match']['amount'] = {'gte': 1000}
+    req = next(item for item in sbp_trader['requisites'] if item['id'] == 'sbp_phone_01')
+    req['amount_range'] = {'min': 5000, 'max': 6000}
+    trader_path.write_text(json.dumps(trader, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+    case = build_trader_smoke_case(copied_medium_profile)
+    assert 5000 <= case['payload']['amount'] <= 6000
+
+
+def test_list_available_profiles_includes_nested_heavy_variants(project_root: Path) -> None:
+    profiles = set(list_available_profiles(root=project_root))
+    assert {'light', 'medium', 'heavy', 'heavy/shared-dev', 'heavy/dedicated'}.issubset(profiles)

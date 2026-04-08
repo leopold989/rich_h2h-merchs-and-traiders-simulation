@@ -16,7 +16,7 @@ config/
   trader.json
 ```
 
-## Что уже реализовано к Patch 06
+## Что уже реализовано к Patch 07
 
 - каркас FastAPI-сервиса и control API;
 - финальные схемы `system.json`, `merchant.json`, `trader.json`;
@@ -36,6 +36,10 @@ config/
   - `success | business_reject | timeout | http_error` сценарии;
 - JSONL-логи по раздельным каналам;
 - light / medium / heavy профили;
+- отдельные heavy-варианты:
+  - `heavy/shared-dev`
+  - `heavy/dedicated`
+- safety guard rails в `system.json` для shared-dev и dedicated профилей;
 - helper scripts для установки профиля, запуска, smoke-check и просмотра логов;
 - step-by-step документация для нового человека.
 
@@ -76,16 +80,41 @@ python scripts/http_smoke.py --system-config .sim-workspaces/light/config/system
 python scripts/tail_logs.py --system-config .sim-workspaces/light/config/system.json --lines 20
 ```
 
+## Heavy профили
+
+Для серьёзных прогонов теперь есть два варианта:
+
+- `heavy/shared-dev` — консервативный heavy для общего dev-стенда;
+- `heavy/dedicated` — агрессивный профиль для выделенного стенда.
+
+Примеры:
+
+```bash
+python scripts/install_profile.py --profile heavy/shared-dev --workspace .sim-workspaces/heavy-shared --overwrite
+python scripts/validate_config.py --system-config .sim-workspaces/heavy-shared/config/system.json
+```
+
+```bash
+python scripts/install_profile.py --profile heavy/dedicated --workspace .sim-workspaces/heavy-dedicated --overwrite
+python scripts/validate_config.py --system-config .sim-workspaces/heavy-dedicated/config/system.json
+```
+
 ## Make targets
 
 ```bash
 make validate-light
 make validate-medium
 make validate-heavy
+make validate-heavy-shared
+make validate-heavy-dedicated
 make install-light
 make install-medium
+make install-heavy-shared
+make install-heavy-dedicated
 make run-light
 make run-medium
+make run-heavy-shared
+make run-heavy-dedicated
 make test
 ```
 
@@ -116,7 +145,9 @@ make test
 ### Эксплуатация и тестирование
 - [docs/operations/logs-and-reload.md](docs/operations/logs-and-reload.md)
 - [docs/operations/troubleshooting.md](docs/operations/troubleshooting.md)
+- [docs/operations/performance-tuning.md](docs/operations/performance-tuning.md)
 - [docs/testing/profile-catalog.md](docs/testing/profile-catalog.md)
+- [docs/testing/heavy-profiles.md](docs/testing/heavy-profiles.md)
 - [docs/testing/strategy.md](docs/testing/strategy.md)
 - [docs/testing/run-tests.md](docs/testing/run-tests.md)
 
@@ -127,6 +158,7 @@ make test
 - [docs/patches/patch-04.md](docs/patches/patch-04.md)
 - [docs/patches/patch-05.md](docs/patches/patch-05.md)
 - [docs/patches/patch-06.md](docs/patches/patch-06.md)
+- [docs/patches/patch-07.md](docs/patches/patch-07.md)
 
 ## Важные ограничения
 
@@ -134,4 +166,5 @@ make test
 - merchant-side сценарии требуют доступной dev-платформы или test stub-а;
 - `callback_url` для merchant H2H в текущем проекте должен быть `https`;
 - `payment_gateway` и `currency` в merchant create-order взаимоисключающие;
-- `finish` оставлен как dev-only сценарий.
+- `finish` оставлен как dev-only сценарий;
+- safety block — это guard rail при загрузке конфигов, а не полноценный runtime rate limiter.

@@ -53,6 +53,7 @@ class MerchantRunner:
         self.transport_factory = transport_factory
         self.state = MerchantRuntimeStore()
         self._job_tasks: dict[str, asyncio.Task[None]] = {}
+        self._job_specs: dict[str, str] = {}
         self._background_tasks: set[asyncio.Task[Any]] = set()
         self._seq_by_job: dict[str, int] = defaultdict(int)
         self._config_fingerprint: str | None = None
@@ -64,6 +65,7 @@ class MerchantRunner:
     async def stop(self) -> None:
         tasks = list(self._job_tasks.values()) + list(self._background_tasks)
         self._job_tasks.clear()
+        self._job_specs.clear()
         self._background_tasks.clear()
         for task in tasks:
             task.cancel()
@@ -85,23 +87,31 @@ class MerchantRunner:
         }
         self.state.reset_job_registry(callback_paths)
 
+        self._prune_completed_job_tasks()
         active_jobs = self._collect_active_jobs(bundle)
+        desired_specs = {
+            job.id: self._build_job_spec_fingerprint(bundle, job, merchant, template)
+            for job, merchant, template in active_jobs
+        }
         current_job_ids = set(self._job_tasks)
-        desired_job_ids = {job.id for job, _, _ in active_jobs}
+        desired_job_ids = set(desired_specs)
 
         for job_id in sorted(current_job_ids - desired_job_ids):
-            task = self._job_tasks.pop(job_id)
-            task.cancel()
-            with suppress(asyncio.CancelledError):
-                await task
-            await self.state.mark_job_finished(job_id)
+            await self._cancel_job(job_id)
 
+        recreated_jobs: list[str] = []
         for job, merchant, template in active_jobs:
             await self.state.upsert_job(job.id, merchant.alias, template.id)
-            if job.id in self._job_tasks:
+            desired_spec = desired_specs[job.id]
+            current_task = self._job_tasks.get(job.id)
+            current_spec = self._job_specs.get(job.id)
+            if current_task is not None and not current_task.done() and current_spec == desired_spec:
                 continue
+            if current_task is not None:
+                await self._cancel_job(job.id, mark_finished=False)
+                recreated_jobs.append(job.id)
             task = asyncio.create_task(self._job_loop(bundle, job, merchant, template), name=f'merchant-job:{job.id}')
-            self._job_tasks[job.id] = task
+            self._register_job_task(job.id, desired_spec, task)
 
         self._config_fingerprint = fingerprint
         log_event(
@@ -111,6 +121,7 @@ class MerchantRunner:
                 'active_jobs': sorted(desired_job_ids),
                 'callback_paths': callback_paths,
                 'fingerprint': fingerprint,
+                'recreated_jobs': sorted(set(recreated_jobs)),
             },
         )
 
@@ -373,34 +384,42 @@ class MerchantRunner:
         path = path_template.format(order_id=order_id)
         files = None
         form = None
-        if action.type in {'add_receipt', 'dispute'}:
-            if action.receipt is None:
-                await self.state.record_action_result(
-                    internal_id,
-                    action.id,
-                    status='failed',
-                    error='receipt configuration is required for action',
-                )
-                return
-            form, files = await self._build_receipt_payload(bundle, action.receipt)
+        try:
+            if action.type in {'add_receipt', 'dispute'}:
+                if action.receipt is None:
+                    await self.state.record_action_result(
+                        internal_id,
+                        action.id,
+                        status='failed',
+                        error='receipt configuration is required for action',
+                    )
+                    return
+                form, files = await self._build_receipt_payload(bundle, action.receipt)
 
-        response = await self._request_json(
-            merchant=merchant,
-            method=method,
-            path=path,
-            form_body=form,
-            files=files,
-            event=event_name,
-        )
-        status_name = 'done' if response['ok'] else 'failed'
-        await self.state.record_action_result(
-            internal_id,
-            action.id,
-            status=status_name,
-            http_status_code=response['status_code'],
-            response_body=response['json'],
-            error=response['error'],
-        )
+            response = await self._request_json(
+                merchant=merchant,
+                method=method,
+                path=path,
+                form_body=form,
+                files=files,
+                event=event_name,
+            )
+            status_name = 'done' if response['ok'] else 'failed'
+            await self.state.record_action_result(
+                internal_id,
+                action.id,
+                status=status_name,
+                http_status_code=response['status_code'],
+                response_body=response['json'],
+                error=response['error'],
+            )
+        except Exception as exc:  # noqa: BLE001
+            await self.state.record_action_result(
+                internal_id,
+                action.id,
+                status='failed',
+                error=str(exc),
+            )
 
     async def _fetch_and_record_order(self, bundle: ConfigBundle, merchant: MerchantConfigEntry, internal_id: str) -> None:
         response = await self._fetch_order_state(bundle, merchant, internal_id)
@@ -558,6 +577,51 @@ class MerchantRunner:
             },
         )
         return response_payload
+
+    async def _cancel_job(self, job_id: str, *, mark_finished: bool = True) -> None:
+        task = self._job_tasks.pop(job_id, None)
+        self._job_specs.pop(job_id, None)
+        if task is None:
+            return
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+        if mark_finished:
+            await self.state.mark_job_finished(job_id)
+
+    def _prune_completed_job_tasks(self) -> None:
+        for job_id, task in list(self._job_tasks.items()):
+            if task.done():
+                self._job_tasks.pop(job_id, None)
+                self._job_specs.pop(job_id, None)
+
+    def _register_job_task(self, job_id: str, spec_fingerprint: str, task: asyncio.Task[None]) -> None:
+        self._job_tasks[job_id] = task
+        self._job_specs[job_id] = spec_fingerprint
+
+        def _cleanup(done: asyncio.Task[None]) -> None:
+            if self._job_tasks.get(job_id) is done:
+                self._job_tasks.pop(job_id, None)
+            if self._job_specs.get(job_id) == spec_fingerprint:
+                self._job_specs.pop(job_id, None)
+
+        task.add_done_callback(_cleanup)
+
+    def _build_job_spec_fingerprint(
+        self,
+        bundle: ConfigBundle,
+        job: MerchantJobConfig,
+        merchant: MerchantConfigEntry,
+        template: RequestTemplateConfig,
+    ) -> str:
+        payload = {
+            'job': job.model_dump(mode='json'),
+            'merchant': merchant.model_dump(mode='json'),
+            'template': template.model_dump(mode='json'),
+            'public_base_url': str(bundle.system.service.public_base_url),
+            'defaults': bundle.merchant.defaults.model_dump(mode='json'),
+        }
+        return json.dumps(payload, sort_keys=True, ensure_ascii=False)
 
     def _collect_active_jobs(
         self,
